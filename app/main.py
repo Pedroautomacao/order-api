@@ -1,15 +1,11 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.database.session import engine
-from app.database.imports import *
-from app.database.base import Base
 
 from app.database.deps import get_db
 
 app = FastAPI(title="Order API")
 
-Base.metadata.create_all(bind=engine)
 
 @app.get("/health")
 def health_check():
