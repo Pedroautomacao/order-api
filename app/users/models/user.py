@@ -1,7 +1,13 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.database.associations import user_roles
+
+if TYPE_CHECKING:
+    from app.users.models.role import Role
 
 
 class User(Base):
@@ -12,8 +18,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    roles = relationship(
+    roles: Mapped[list["Role"]] = relationship(
         "Role",
-        secondary="user_roles",
+        secondary=user_roles,
         back_populates="users",
     )
