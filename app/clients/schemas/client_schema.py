@@ -7,7 +7,7 @@ class ClientBase(BaseModel):
         ...,
         min_length=1,
         max_length=1,
-        regex="^[B-Z]$",
+        pattern="^[B-Z]$",
         description="Client priority from B to Z",
     )
     cpf_cnpj: str
@@ -26,7 +26,7 @@ class ClientUpdate(BaseModel):
         default=None,
         min_length=1,
         max_length=1,
-        regex="^[B-Z]$",
+        pattern="^[B-Z]$",
     )
     address: str | None = None
     phone_number: str | None = None

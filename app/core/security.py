@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
+import hashlib
+import secrets
 
 from app.core.config import settings
 
@@ -16,11 +18,14 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
-    payload = {
-        "sub": subject,
-        "exp": expire,
-    }
+    expire = datetime.utcnow() + timedelta(minutes=15)
+    payload = {"sub": subject, "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+
+def generate_refresh_token() -> str:
+    return secrets.token_urlsafe(64)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()

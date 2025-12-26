@@ -1,5 +1,5 @@
 from sqlalchemy import String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.mixins import AuditMixin
@@ -41,4 +41,10 @@ class User(Base, AuditMixin):
         Boolean,
         default=True,
         nullable=False,
+    )
+
+    roles = relationship(
+        "Role",
+        secondary="user_roles",
+        back_populates="users",
     )

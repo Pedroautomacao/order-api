@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.auth.services.refresh_token_service import RefreshTokenService
 from app.users.models.user import User
 from app.users.schemas.user_schema import UserCreate, UserUpdate
 from app.core.security import hash_password
@@ -83,4 +84,30 @@ class UserService:
             entity_id=user.id,
             user_id=current_user.id,
             description=f"User {user.username} soft deleted by {current_user.username} ",
+        )
+
+    @staticmethod
+    def reset_password(
+            db: Session,
+            *,
+            user: User,
+            new_password: str,
+            admin_user: User,
+    ) -> None:
+        user.password_hash = hash_password(new_password)
+        db.commit()
+
+        # revoke all refresh tokens
+        RefreshTokenService.revoke_all_for_user(db, user.id)
+
+        AuditService.log(
+            db=db,
+            action="user:reset_password",
+            entity="user",
+            entity_id=user.id,
+            user_id=admin_user.id,
+            description=(
+                f"Password reset for user '{user.username}' "
+                f"by admin '{admin_user.username}'"
+            ),
         )

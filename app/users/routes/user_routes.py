@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.security import hash_password
 from app.database.deps import get_db
 from app.users.models.user import User
 from app.users.schemas.user_schema import (
     UserCreate,
     UserUpdate,
-    UserResponse,
+    UserResponse, ResetPasswordRequest,
 )
 from app.users.services.user_service import UserService
 from app.users.dependencies.permission_dependencies import require_permission
@@ -127,4 +128,35 @@ def delete_user(
         db=db,
         user=user,
         current_user=current_user,
+    )
+
+
+@router.put(
+    "/{user_id}/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("user:reset_password"))],
+)
+def reset_user_password(
+    user_id: int,
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.is_deleted.is_(False),
+        )
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    UserService.reset_password(
+        db=db,
+        user=user,
+        new_password=data.new_password,
+        admin_user=current_user,
     )
