@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth.models.refresh_token import RefreshToken
 from app.core.security import generate_refresh_token, hash_refresh_token
 from app.core.config import settings
+from app.core.time import utcnow
 
 
 class RefreshTokenService:
@@ -15,7 +16,7 @@ class RefreshTokenService:
         refresh_token = RefreshToken(
             user_id=user_id,
             token_hash=token_hash,
-            expires_at=datetime.utcnow() + timedelta(hours=9),
+            expires_at=utcnow() + timedelta(hours=9),
         )
 
         db.add(refresh_token)

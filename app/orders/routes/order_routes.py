@@ -1,0 +1,86 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.clients.exception_handler import ClientNotFoundException
+from app.database.deps import get_db
+from app.orders.dependencies import get_order_or_404
+from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
+    DuplicateOrderForClientException, NoOrderAvailableException
+from app.orders.schemas.order_schema import OrderCreate, OrderResponse
+from app.orders.serializers.order_serializer import serialize_order
+from app.orders.services.order_finish_service import OrderFinishService
+from app.orders.services.order_service import OrderService
+from app.products.exception_handler import ProductNotFoundException
+from app.users.dependencies.auth_dependencies import get_current_user
+from app.users.dependencies.permission_dependencies import require_permission
+
+router = APIRouter()
+
+
+@router.post(
+    "/",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("order:create"))],
+)
+def create_order(
+    data: OrderCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        return OrderService.create(
+            db=db,
+            data=data,
+            current_user=current_user,
+        )
+    except (ClientNotFoundException, ProductNotFoundException) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (ValueError, DuplicateProductInOrderException, InvalidScheduledDateException,
+            DuplicateOrderForClientException) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/assign-next",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:read"))],
+)
+def assign_next_order(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        order = OrderService.assign_next_order(
+            db=db,
+            current_user=current_user,
+        )
+        return serialize_order(order)
+    except NoOrderAvailableException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch(
+    "/{order_id}/finish",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:read"))],
+)
+def finish_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    order = get_order_or_404(db, order_id)
+    order = OrderFinishService.finish_order(
+        db=db,
+        order=order,
+        current_user=current_user,
+    )
+    return serialize_order(order)
+
+
+
+

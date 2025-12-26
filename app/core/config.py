@@ -1,6 +1,10 @@
 from pydantic_settings import BaseSettings
 
 
+ACCESS_TOKEN_EXPIRE_HOURS = 6
+REFRESH_TOKEN_EXPIRE_HOURS = 9
+
+
 class Settings(BaseSettings):
     database_url: str
 

@@ -3,9 +3,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.audit.models.audit_log import AuditLog
+from app.core.services.base_atomic_service import BaseAtomicService
 
 
-class AuditService:
+class AuditService(BaseAtomicService):
     @staticmethod
     def list(
         db: Session,

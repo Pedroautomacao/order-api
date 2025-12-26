@@ -1,11 +1,27 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.units.schemas.unit_schema import UnitResponse
 
 
 class ProductBase(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
+
     name: str
     description: str | None = None
     sku: str
-    is_active: bool = True
+
+    unit_of_measure_id: int = Field(
+        ...,
+        alias="unitOfMeasureId",
+    )
+
+    is_active: bool = Field(
+        default=True,
+        alias="isActive",
+    )
+
 
 
 class ProductCreate(ProductBase):
@@ -13,9 +29,22 @@ class ProductCreate(ProductBase):
 
 
 class ProductUpdate(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
+
     name: str | None = None
     description: str | None = None
-    is_active: bool | None = None
+
+    unit_of_measure_id: int | None = Field(
+        default=None,
+        alias="unitOfMeasureId",
+    )
+
+    is_active: bool | None = Field(
+        default=None,
+        alias="isActive",
+    )
 
 
 class ProductResponse(BaseModel):
@@ -25,5 +54,10 @@ class ProductResponse(BaseModel):
     sku: str
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    unit: UnitResponse
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+    )
+

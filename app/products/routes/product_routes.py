@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
+from app.products.exception_handler import UnitOfMeasureNotFoundException, ProductNotFoundException
 from app.products.models.product import Product
 from app.products.schemas.product_schema import (
     ProductCreate,
@@ -26,11 +27,17 @@ def create_product(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return ProductService.create(
-        db=db,
-        data=data,
-        current_user_id=current_user.id,
-    )
+    try:
+        return ProductService.create(
+            db=db,
+            data=data,
+            current_user=current_user,
+        )
+    except UnitOfMeasureNotFoundException as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
 
 @router.get(
@@ -89,14 +96,20 @@ def update_product(
     )
 
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise ProductNotFoundException(product_id)
 
-    return ProductService.update(
-        db=db,
-        product=product,
-        data=data,
-        current_user=current_user,
-    )
+    try:
+        return ProductService.update(
+            db=db,
+            product=product,
+            data=data,
+            current_user=current_user,
+        )
+    except UnitOfMeasureNotFoundException as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
 
 @router.delete(
@@ -119,7 +132,7 @@ def delete_product(
     )
 
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise ProductNotFoundException(product_id)
 
     ProductService.delete(
         db=db,

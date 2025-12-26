@@ -1,5 +1,5 @@
-from sqlalchemy import String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.mixins import AuditMixin
@@ -32,3 +32,15 @@ class Product(Base, AuditMixin):
         default=True,
         nullable=False,
     )
+
+    unit_of_measure_id: Mapped[int] = mapped_column(
+        ForeignKey("units_of_measure.id"),
+        nullable=False,
+        index=True,
+    )
+
+    unit_of_measure = relationship("UnitOfMeasure")
+
+    @property
+    def unit(self):
+        return self.unit_of_measure

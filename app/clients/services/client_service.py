@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from app.clients.models.client import Client
 from app.clients.schemas.client_schema import ClientCreate, ClientUpdate
 from app.audit.services.audit_service import AuditService
+from app.core.services.base_atomic_service import BaseAtomicService
 from app.users.models import User
 
 
-class ClientService:
+class ClientService(BaseAtomicService):
     @staticmethod
     def create(
         db: Session,

@@ -37,9 +37,20 @@ def upgrade() -> None:
             ('product:update', 'Update product'),
             ('product:delete', 'Delete product'),
 
-            -- ORDER (ADMIN ACTIONS)
+            -- UNIT OF MEASURE
+            ('unit:create', 'Create unit of measure'),
+            ('unit:update', 'Update unit of measure'),
+            ('unit:delete', 'Delete unit of measure'),
+            ('unit:list', 'List units of measure'),
+
+            -- ORDER
+            ('order:create', 'Create order'),
+            ('order:read', 'View order'),
+            ('order:list', 'List orders'),
+            ('order:cancel', 'Cancel order'),
             ('order:reset_production', 'Reset order production'),
             ('order:set_priority', 'Set order priority'),
+            ('order:bill', 'Set order billed'),
 
             -- USER
             ('user:create', 'Create user'),
@@ -85,15 +96,29 @@ def downgrade() -> None:
             'client:create',
             'client:update',
             'client:delete',
+
             'product:create',
             'product:update',
             'product:delete',
+
+            'unit:create',
+            'unit:update',
+            'unit:delete',
+            'unit:list',
+
+            'order:create',
+            'order:read',
+            'order:list',
+            'order:cancel',
             'order:reset_production',
             'order:set_priority',
+            'order:bill',
+
             'user:create',
             'user:update',
             'user:reset_password',
             'user:delete',
+
             'audit:read'
         );
         """

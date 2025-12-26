@@ -1,13 +1,14 @@
 from sqlalchemy.orm import Session
 
 from app.auth.services.refresh_token_service import RefreshTokenService
+from app.core.services.base_atomic_service import BaseAtomicService
 from app.users.models.user import User
 from app.users.schemas.user_schema import UserCreate, UserUpdate
 from app.core.security import hash_password
 from app.audit.services.audit_service import AuditService
 
 
-class UserService:
+class UserService(BaseAtomicService):
     @staticmethod
     def create(
         db: Session,
