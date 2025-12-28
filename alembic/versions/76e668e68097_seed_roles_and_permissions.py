@@ -9,7 +9,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # ===============================
     # ROLES
+    # ===============================
     op.execute(
         """
         INSERT INTO roles (name)
@@ -22,7 +24,9 @@ def upgrade() -> None:
         """
     )
 
+    # ===============================
     # PERMISSIONS
+    # ===============================
     op.execute(
         """
         INSERT INTO permissions (code, description)
@@ -52,6 +56,15 @@ def upgrade() -> None:
             ('order:set_priority', 'Set order priority'),
             ('order:bill', 'Set order billed'),
 
+            -- ORDER ITEM BREAK
+            ('order_item_break:read', 'Read order item breaks'),
+            ('order_item_break:create', 'Create order item break'),
+            ('order_item_break:update', 'Update order item break'),
+            ('order_item_break:delete', 'Delete order item break'),
+
+            -- RANKINGS
+            ('rankings:read', 'Read rankings dashboards'),
+
             -- USER
             ('user:create', 'Create user'),
             ('user:update', 'Update user'),
@@ -64,7 +77,9 @@ def upgrade() -> None:
         """
     )
 
+    # ===============================
     # ADMIN GETS ALL PERMISSIONS
+    # ===============================
     op.execute(
         """
         INSERT INTO role_permissions (role_id, permission_id)
@@ -78,7 +93,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # ===============================
     # REMOVE ROLE-PERMISSION LINKS
+    # ===============================
     op.execute(
         """
         DELETE FROM role_permissions
@@ -88,7 +105,9 @@ def downgrade() -> None:
         """
     )
 
+    # ===============================
     # REMOVE PERMISSIONS
+    # ===============================
     op.execute(
         """
         DELETE FROM permissions
@@ -114,6 +133,13 @@ def downgrade() -> None:
             'order:set_priority',
             'order:bill',
 
+            'order_item_break:read',
+            'order_item_break:create',
+            'order_item_break:update',
+            'order_item_break:delete',
+
+            'rankings:read',
+
             'user:create',
             'user:update',
             'user:reset_password',
@@ -124,7 +150,9 @@ def downgrade() -> None:
         """
     )
 
+    # ===============================
     # REMOVE ROLES
+    # ===============================
     op.execute(
         """
         DELETE FROM roles

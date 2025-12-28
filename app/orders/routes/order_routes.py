@@ -6,9 +6,12 @@ from app.database.deps import get_db
 from app.orders.dependencies import get_order_or_404
 from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
     DuplicateOrderForClientException, NoOrderAvailableException
+from app.orders.models.order import Order
 from app.orders.schemas.order_schema import OrderCreate, OrderResponse
 from app.orders.serializers.order_serializer import serialize_order
+from app.orders.services.order_cancel_service import OrderCancelService
 from app.orders.services.order_finish_service import OrderFinishService
+from app.orders.services.order_reset_service import OrderResetService
 from app.orders.services.order_service import OrderService
 from app.products.exception_handler import ProductNotFoundException
 from app.users.dependencies.auth_dependencies import get_current_user
@@ -81,6 +84,72 @@ def finish_order(
     )
     return serialize_order(order)
 
+
+@router.patch(
+    "/{order_id}/reset",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:reset_production"))],
+)
+def reset_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    order = (
+        db.query(Order)
+        .filter(
+            Order.id == order_id,
+            Order.is_deleted.is_(False),
+        )
+        .first()
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+    return OrderResetService.reset(
+        db=db,
+        order=order,
+        current_user=current_user,
+    )
+
+
+@router.patch(
+    "/{order_id}/cancel",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:cancel"))],
+)
+def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    order = (
+        db.query(Order)
+        .filter(
+            Order.id == order_id,
+            Order.is_deleted.is_(False),
+        )
+        .first()
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+    is_admin = current_user.role.name == "admin"
+
+    return OrderCancelService.cancel(
+        db=db,
+        order=order,
+        current_user=current_user,
+        is_admin=is_admin,
+    )
 
 
 

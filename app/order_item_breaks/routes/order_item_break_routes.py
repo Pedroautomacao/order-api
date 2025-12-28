@@ -1,3 +1,4 @@
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -5,9 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
 from app.order_item_breaks.schemas.order_item_break_schema import OrderItemBreakResponse
-from app.users.dependencies.permission_dependencies import require_permission
+from app.order_item_breaks.services.order_item_break_service import (
+    OrderItemBreakService,
+)
 from app.users.dependencies.auth_dependencies import get_current_user
-from app.order_item_breaks.services.order_item_break_service import OrderItemBreakService
+from app.users.dependencies.permission_dependencies import require_permission
 
 router = APIRouter()
 
@@ -24,7 +27,7 @@ def list_order_item_breaks(
     current_user=Depends(get_current_user),
 ):
     return OrderItemBreakService.list(
-        db=db,
+        db,
         order_id=order_id,
         order_item_id=order_item_id,
     )

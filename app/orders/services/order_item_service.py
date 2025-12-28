@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.audit.services.audit_service import AuditService
 from app.core.services.base_atomic_service import BaseAtomicService
 from app.core.time import utcnow
+from app.order_item_breaks.models import OrderItemBreak
 from app.orders.dependencies import get_order_item_or_404
 from app.orders.enums import OrderItemStatus
 from app.orders.exception_handler import OrderNotAssignedToUserException, InvalidOrderItemStateException
@@ -31,6 +32,19 @@ class OrderItemService(BaseAtomicService):
                 item.id,
                 OrderItemStatus.PRODUCING,
                 item.status,
+            )
+
+        expected = item.quantity
+        if data.produced_quantity < expected:
+            db.add(
+                OrderItemBreak(
+                    order_id=item.order_id,
+                    order_item_id=item.id,
+                    expected_quantity=expected,
+                    confirmed_quantity=data.produced_quantity,
+                    difference_quantity=expected - data.produced_quantity,
+                    created_by=current_user.id,
+                )
             )
 
         # salvar quantidade produzida
