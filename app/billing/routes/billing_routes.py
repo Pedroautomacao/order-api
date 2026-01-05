@@ -15,7 +15,7 @@ router = APIRouter()
 @router.patch(
     "/{order_id}/bill",
     response_model=OrderResponse,
-    dependencies=[require_permission("order:bill")],
+    dependencies=[Depends(require_permission("order:bill"))],
 )
 def bill_order(
     order_id: int,

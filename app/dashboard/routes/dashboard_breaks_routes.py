@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get(
     "/breaks",
     response_model=DashboardBreaksResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_breaks(
     db: Session = Depends(get_db),

@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get(
     "/latest",
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def get_latest_dashboard_snapshot(
     db: Session = Depends(get_db),

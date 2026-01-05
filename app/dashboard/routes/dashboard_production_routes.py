@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get(
     "/production",
     response_model=DashboardProductionResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_production(
     db: Session = Depends(get_db),

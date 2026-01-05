@@ -1,10 +1,1 @@
-from pydantic import BaseModel
-
-
-class PermissionResponse(BaseModel):
-    id: int
-    code: str
-    description: str | None
-
-    class Config:
-        from_attributes = True
+# PermissionResponse moved to role_schema.py to avoid circular imports

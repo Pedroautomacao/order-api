@@ -1,8 +1,9 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth.services.refresh_token_service import RefreshTokenService
 from app.core.services.base_atomic_service import BaseAtomicService
 from app.users.models.user import User
+from app.users.models.role import Role
 from app.users.schemas.user_schema import UserCreate, UserUpdate
 from app.core.security import hash_password
 from app.audit.services.audit_service import AuditService
@@ -29,6 +30,16 @@ class UserService(BaseAtomicService):
         db.commit()
         db.refresh(user)
 
+        # Load relationships
+        user = (
+            db.query(User)
+            .options(
+                selectinload(User.roles).selectinload(Role.permissions)
+            )
+            .filter(User.id == user.id)
+            .first()
+        )
+
         AuditService.log(
             db=db,
             action="user:create",
@@ -53,6 +64,16 @@ class UserService(BaseAtomicService):
 
         db.commit()
         db.refresh(user)
+
+        # Load relationships
+        user = (
+            db.query(User)
+            .options(
+                selectinload(User.roles).selectinload(Role.permissions)
+            )
+            .filter(User.id == user.id)
+            .first()
+        )
 
         AuditService.log(
             db=db,

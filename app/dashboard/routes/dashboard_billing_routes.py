@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get(
     "/billing",
     response_model=DashboardBillingResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_billing(
     db: Session = Depends(get_db),

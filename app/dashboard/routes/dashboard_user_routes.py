@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get(
     "/users",
     response_model=DashboardUsersResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_users(
     db: Session = Depends(get_db),

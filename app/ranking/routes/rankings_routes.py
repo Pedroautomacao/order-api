@@ -15,7 +15,7 @@ router = APIRouter(prefix="/rankings", tags=["Rankings"])
 @router.get(
     "",
     response_model=RankingsResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def get_rankings(
     limit: int = 10,

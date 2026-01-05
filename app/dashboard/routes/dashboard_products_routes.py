@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get(
     "/dashboard/products",
     response_model=DashboardProductsResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_products(
     date_from: date | None = None,

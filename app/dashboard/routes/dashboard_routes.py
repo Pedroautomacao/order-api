@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get(
     "/overview",
     response_model=DashboardOverviewResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_overview(
     db: Session = Depends(get_db),

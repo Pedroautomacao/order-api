@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get(
     "/producers",
     response_model=DashboardProducersResponse,
-    dependencies=[require_permission("audit:read")],
+    dependencies=[Depends(require_permission("audit:read"))],
 )
 def dashboard_producers(
     date_from: date | None = None,

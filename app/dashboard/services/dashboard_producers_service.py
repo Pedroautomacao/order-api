@@ -7,8 +7,8 @@ from app.users.models.user import User
 from app.orders.models.order import Order
 from app.orders.models.work_order import WorkOrder
 from app.orders.models.work_item import WorkItem
-from app.orders.enums.order_status import OrderStatus
-from app.order_item_breaks.models.order_item_break import OrderItemBreak
+from app.orders.enums import OrderStatus
+from app.order_item_breaks.models import OrderItemBreak
 from app.dashboard.utils.date_range import resolve_date_range
 
 
@@ -96,7 +96,7 @@ class DashboardProducersService:
                 db.query(func.sum(OrderItemBreak.difference_quantity))
                 .join(
                     WorkItem,
-                    WorkItem.id == OrderItemBreak.work_item_id,
+                    WorkItem.order_item_id == OrderItemBreak.order_item_id,
                 )
                 .filter(
                     WorkItem.user_id == user.id,
@@ -112,7 +112,7 @@ class DashboardProducersService:
                 db.query(func.sum(OrderItemBreak.expected_quantity))
                 .join(
                     WorkItem,
-                    WorkItem.id == OrderItemBreak.work_item_id,
+                    WorkItem.order_item_id == OrderItemBreak.order_item_id,
                 )
                 .filter(
                     WorkItem.user_id == user.id,

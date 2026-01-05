@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.security import hash_password
 from app.database.deps import get_db
 from app.users.models.user import User
+from app.users.models.role import Role
 from app.users.schemas.user_schema import (
     UserCreate,
     UserUpdate,
@@ -41,6 +42,9 @@ def create_user(
 def list_users(db: Session = Depends(get_db)):
     return (
         db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions)
+        )
         .filter(User.is_deleted.is_(False))
         .order_by(User.username)
         .all()
@@ -55,6 +59,9 @@ def list_users(db: Session = Depends(get_db)):
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = (
         db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions)
+        )
         .filter(
             User.id == user_id,
             User.is_deleted.is_(False),
@@ -80,6 +87,9 @@ def update_user(
 ):
     user = (
         db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions)
+        )
         .filter(
             User.id == user_id,
             User.is_deleted.is_(False),
