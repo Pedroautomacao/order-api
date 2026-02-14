@@ -48,7 +48,10 @@ class OrderService(BaseAtomicService):
         )
 
         if not client:
-            raise ClientNotFoundException(data.clientId)
+            raise ClientNotFoundException(data.client_id)
+
+        if not client.is_active:
+            raise ValueError("Cliente inativo não pode receber novos pedidos")
 
         # 0️⃣ validar produtos duplicados no request
         product_ids = [item.product_id for item in data.items]

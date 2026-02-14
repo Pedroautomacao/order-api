@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import or_, func, text
 from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
 from app.clients.models.client import Client
+from app.core.utils.search import normalize_search_string, unaccent_like_sql
 from app.clients.schemas.client_schema import (
     ClientCreate,
     ClientUpdate,
@@ -39,13 +41,32 @@ def create_client(
     response_model=list[ClientResponse],
     dependencies=[Depends(require_permission("client:read"))],
 )
-def list_clients(db: Session = Depends(get_db)):
-    return (
-        db.query(Client)
-        .filter(Client.is_deleted.is_(False))
-        .order_by(Client.name)
-        .all()
-    )
+def list_clients(
+    db: Session = Depends(get_db),
+    search: str | None = Query(None, description="ID, nome ou CPF/CNPJ do cliente"),
+    is_active: bool | None = Query(None, description="Filtrar por ativo (true/false); omitir = todos"),
+):
+    q = db.query(Client).filter(Client.is_deleted.is_(False))
+    if is_active is not None:
+        q = q.filter(Client.is_active.is_(is_active))
+    if search and search.strip():
+        normalized = normalize_search_string(search)
+        pattern = f"%{normalized}%"
+        conditions = []
+        if search.strip().isdigit():
+            conditions.append(Client.id == int(search.strip()))
+        use_unaccent = db.get_bind().dialect.name == "postgresql"
+        if use_unaccent:
+            conditions.append(
+                text(unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])).bindparams(
+                    search_pattern=pattern
+                )
+            )
+        else:
+            conditions.append(func.lower(Client.name).like(pattern))
+            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
+        q = q.filter(or_(*conditions))
+    return q.order_by(Client.name).all()
 
 
 @router.get(

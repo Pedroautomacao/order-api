@@ -1,4 +1,4 @@
-from sqlalchemy import String, CHAR, Text
+from sqlalchemy import String, CHAR, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -15,3 +15,4 @@ class Client(Base, AuditMixin):
     address: Mapped[str] = mapped_column(Text, nullable=False)
     phone_number: Mapped[str] = mapped_column(String(30), nullable=False)
     observations: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

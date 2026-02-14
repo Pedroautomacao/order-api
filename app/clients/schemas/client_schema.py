@@ -29,6 +29,7 @@ class ClientBase(BaseModel):
     )
 
     observations: str | None = None
+    is_active: bool = Field(True, alias="isActive")
 
 
 class ClientCreate(ClientBase):
@@ -57,6 +58,7 @@ class ClientUpdate(BaseModel):
     )
 
     observations: str | None = None
+    is_active: bool | None = Field(None, alias="isActive")
 
 
 class ClientResponse(BaseModel):
@@ -67,6 +69,7 @@ class ClientResponse(BaseModel):
     address: str
     phone_number: str
     observations: str | None
+    is_active: bool
 
     class Config:
         from_attributes = True

@@ -4,11 +4,12 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
-from app.database.associations import user_roles, role_permissions
+from app.database.associations import user_roles, role_permissions, role_menu_groups
 
 if TYPE_CHECKING:
     from app.users.models.user import User
     from app.users.models.permission import Permission
+    from app.users.models.menu_group import MenuGroup
 
 
 class Role(Base):
@@ -26,5 +27,11 @@ class Role(Base):
     permissions: Mapped[list["Permission"]] = relationship(
         "Permission",
         secondary=role_permissions,
+        back_populates="roles",
+    )
+
+    menu_groups: Mapped[list["MenuGroup"]] = relationship(
+        "MenuGroup",
+        secondary=role_menu_groups,
         back_populates="roles",
     )

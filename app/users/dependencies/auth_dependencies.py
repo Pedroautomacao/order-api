@@ -33,7 +33,7 @@ def get_current_user(
         raise credentials_exception
 
     user = db.get(User, int(user_id))
-    if user is None:
+    if user is None or getattr(user, "is_deleted", False):
         raise credentials_exception
 
     return user

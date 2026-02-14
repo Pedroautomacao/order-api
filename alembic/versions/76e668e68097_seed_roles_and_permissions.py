@@ -19,7 +19,8 @@ def upgrade() -> None:
             ('tech'),
             ('admin'),
             ('order_creator'),
-            ('order_producer')
+            ('order_producer'),
+            ('fiscal')
         ON CONFLICT (name) DO NOTHING;
         """
     )
@@ -32,6 +33,7 @@ def upgrade() -> None:
         INSERT INTO permissions (code, description)
         VALUES
             -- CLIENT
+            ('client:read', 'Read/list clients'),
             ('client:create', 'Create client'),
             ('client:update', 'Update client'),
             ('client:delete', 'Delete client'),
@@ -112,6 +114,7 @@ def downgrade() -> None:
         """
         DELETE FROM permissions
         WHERE code IN (
+            'client:read',
             'client:create',
             'client:update',
             'client:delete',
@@ -156,6 +159,6 @@ def downgrade() -> None:
     op.execute(
         """
         DELETE FROM roles
-        WHERE name IN ('tech', 'admin', 'order_creator', 'order_producer');
+        WHERE name IN ('tech', 'admin', 'order_creator', 'order_producer', 'fiscal');
         """
     )

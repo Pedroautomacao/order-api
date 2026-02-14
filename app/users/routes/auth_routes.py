@@ -1,13 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth.services.refresh_token_service import RefreshTokenService
 from app.core.security import create_access_token
 from app.database.deps import get_db
+from app.users.models.user import User
+from app.users.models.role import Role
+from app.users.models.menu_group import MenuGroup
 from app.users.schemas.auth_schema import TokenResponse, LoginRequest
+from app.users.schemas.user_schema import UserResponse
 from app.users.services.auth_service import AuthService
+from app.users.dependencies.auth_dependencies import get_current_user
 
 router = APIRouter()
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return current authenticated user with roles and permissions (e.g. after F5)."""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    user = (
+        db.query(User)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.roles).selectinload(Role.menu_groups).selectinload(MenuGroup.permissions),
+        )
+        .filter(
+            User.id == current_user.id,
+            User.is_deleted.is_(False),
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 @router.post("/login", response_model=TokenResponse)

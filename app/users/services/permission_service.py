@@ -7,8 +7,16 @@ class PermissionService:
         permissions: set[str] = set()
 
         for role in user.roles:
-            for permission in role.permissions:
-                permissions.add(permission.code)
+            menu_groups = getattr(role, "menu_groups", None) or []
+            if menu_groups:
+                # Se o perfil tem grupos de menu, usa só as permissões dos grupos (não as diretas do role)
+                for menu_group in menu_groups:
+                    for permission in menu_group.permissions:
+                        permissions.add(permission.code)
+            else:
+                # Perfil sem grupos de menu: usa as permissões diretas do role
+                for permission in role.permissions:
+                    permissions.add(permission.code)
 
         return permissions
 

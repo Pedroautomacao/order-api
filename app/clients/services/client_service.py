@@ -22,6 +22,7 @@ class ClientService(BaseAtomicService):
             address=data.address,
             phone_number=data.phone_number,
             observations=data.observations,
+            is_active=data.is_active,
         )
         db.add(client)
         db.commit()

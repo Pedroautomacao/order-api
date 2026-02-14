@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.users.schemas.role_schema import RoleResponse
 
@@ -13,14 +13,21 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    model_config = ConfigDict(populate_by_name=True)
+
     password: str
+    role_ids: list[int] = Field(default_factory=list, alias="roleIds")
 
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     first_name: str | None = None
     last_name: str | None = None
     email: EmailStr | None = None
     is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=8)
+    role_ids: list[int] | None = Field(default=None, alias="roleIds")
 
 
 class UserResponse(BaseModel):

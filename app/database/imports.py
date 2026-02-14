@@ -1,6 +1,7 @@
 # Associações / RBAC
 from app.database.associations import user_roles, role_permissions  # noqa
-from app.users.models import User, Role, Permission  # noqa
+from app.users.models import User, Role, Permission, MenuGroup  # noqa
+from app.database.associations import menu_group_permissions, role_menu_groups  # noqa
 
 # Auth / Security
 from app.auth.models.refresh_token import RefreshToken  # noqa

@@ -1,5 +1,16 @@
-from app.orders.schemas.order_schema import OrderResponse
+from app.orders.schemas.order_schema import OrderResponse, OrderListResponse
 from app.orders.utils.split_order_item import split_order_items
+
+
+def serialize_order_list_item(order) -> OrderListResponse:
+    return OrderListResponse(
+        id=order.id,
+        priority=order.priority,
+        status=order.status,
+        scheduled_date=order.scheduled_date,
+        client_id=order.client_id,
+        client=order.client,
+    )
 
 
 def serialize_order(order) -> OrderResponse:
@@ -14,6 +25,7 @@ def serialize_order(order) -> OrderResponse:
         priority=order.priority,
         status=order.status,
         scheduled_date=order.scheduled_date,
+        client=order.client,
 
         produced_items=produced_items,
         current_item=current_item,

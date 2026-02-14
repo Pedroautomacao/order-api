@@ -8,6 +8,7 @@ from app.database.associations import role_permissions
 
 if TYPE_CHECKING:
     from app.users.models.role import Role
+    from app.users.models.menu_group import MenuGroup
 
 
 class Permission(Base):
@@ -20,5 +21,11 @@ class Permission(Base):
     roles: Mapped[list["Role"]] = relationship(
         "Role",
         secondary=role_permissions,
+        back_populates="permissions",
+    )
+
+    menu_groups: Mapped[list["MenuGroup"]] = relationship(
+        "MenuGroup",
+        secondary="menu_group_permissions",
         back_populates="permissions",
     )

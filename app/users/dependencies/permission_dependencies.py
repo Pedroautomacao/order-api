@@ -11,18 +11,11 @@ def require_permission(permission_code: str):
         if PermissionService.has_role(user, "tech"):
             return True
 
-        # 🛠️ ADMIN ROLE → CHECK PERMISSIONS
-        if PermissionService.has_role(user, "admin"):
-            permissions = PermissionService.get_user_permissions(user)
-            if permission_code in permissions:
-                return True
+        # Permissões vêm de role.permissions e de role.menu_groups (grupos de menu)
+        permissions = PermissionService.get_user_permissions(user)
+        if permission_code in permissions:
+            return True
 
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Permission denied",
-            )
-
-        # 📦 OTHER ROLES → NOT ALLOWED HERE
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied",

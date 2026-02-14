@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import or_, func, text
 from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
 from app.products.exception_handler import UnitOfMeasureNotFoundException, ProductNotFoundException
 from app.products.models.product import Product
+from app.core.utils.search import normalize_search_string, unaccent_like_sql
 from app.products.schemas.product_schema import (
     ProductCreate,
     ProductUpdate,
@@ -43,21 +45,40 @@ def create_product(
 @router.get(
     "/",
     response_model=list[ProductResponse],
-    dependencies=[Depends(require_permission("product:create"))],
+    dependencies=[Depends(require_permission("product:read"))],
 )
-def list_products(db: Session = Depends(get_db)):
-    return (
-        db.query(Product)
-        .filter(Product.is_deleted.is_(False))
-        .order_by(Product.name)
-        .all()
-    )
+def list_products(
+    db: Session = Depends(get_db),
+    search: str | None = Query(None, description="ID do produto, SKU ou nome"),
+    is_active: bool | None = Query(None, description="Filtrar por ativo (true/false); omitir = todos"),
+):
+    q = db.query(Product).filter(Product.is_deleted.is_(False))
+    if is_active is not None:
+        q = q.filter(Product.is_active.is_(is_active))
+    if search and search.strip():
+        normalized = normalize_search_string(search)
+        pattern = f"%{normalized}%"
+        conditions = []
+        if search.strip().isdigit():
+            conditions.append(Product.id == int(search.strip()))
+        use_unaccent = db.get_bind().dialect.name == "postgresql"
+        if use_unaccent:
+            conditions.append(
+                text(unaccent_like_sql([("products", "sku"), ("products", "name")])).bindparams(
+                    search_pattern=pattern
+                )
+            )
+        else:
+            conditions.append(func.lower(Product.sku).like(pattern))
+            conditions.append(func.lower(Product.name).like(pattern))
+        q = q.filter(or_(*conditions))
+    return q.order_by(Product.name).all()
 
 
 @router.get(
     "/{product_id}",
     response_model=ProductResponse,
-    dependencies=[Depends(require_permission("product:create"))],
+    dependencies=[Depends(require_permission("product:read"))],
 )
 def get_product(product_id: int, db: Session = Depends(get_db)):
     product = (
