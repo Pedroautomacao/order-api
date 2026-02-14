@@ -27,6 +27,7 @@ from app.users.services.user_service import UserService
 from app.users.services.permission_service import PermissionService
 from app.users.dependencies.permission_dependencies import require_permission
 from app.users.dependencies.auth_dependencies import get_current_user
+from app.audit.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -165,6 +166,7 @@ def list_menu_groups(db: Session = Depends(get_db)):
 def create_menu_group(
     data: MenuGroupCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     existing = db.query(MenuGroup).filter(MenuGroup.code == data.code.strip()).first()
     if existing:
@@ -187,6 +189,14 @@ def create_menu_group(
     db.add(group)
     db.commit()
     db.refresh(group)
+    AuditService.log(
+        db=db,
+        action="menu_group:create",
+        entity="menu_group",
+        entity_id=group.id,
+        user_id=current_user.id,
+        description=f"Grupo de menu '{group.name}' (code={group.code}) criado por {current_user.username}",
+    )
     return group
 
 
@@ -199,6 +209,7 @@ def update_menu_group(
     group_id: int,
     data: MenuGroupUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     group = (
         db.query(MenuGroup)
@@ -224,6 +235,14 @@ def update_menu_group(
         group.permissions = permissions
     db.commit()
     db.refresh(group)
+    AuditService.log(
+        db=db,
+        action="menu_group:update",
+        entity="menu_group",
+        entity_id=group.id,
+        user_id=current_user.id,
+        description=f"Grupo de menu '{group.name}' (id={group_id}) atualizado por {current_user.username}",
+    )
     return group
 
 
@@ -236,6 +255,7 @@ def update_role(
     role_id: int,
     data: RoleUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     role = db.query(Role).options(
         selectinload(Role.permissions),
@@ -250,6 +270,14 @@ def update_role(
         role.menu_groups = groups
     db.commit()
     db.refresh(role)
+    AuditService.log(
+        db=db,
+        action="role:update",
+        entity="role",
+        entity_id=role.id,
+        user_id=current_user.id,
+        description=f"Perfil '{role.name}' (id={role_id}) atualizado por {current_user.username}",
+    )
     role = (
         db.query(Role)
         .options(

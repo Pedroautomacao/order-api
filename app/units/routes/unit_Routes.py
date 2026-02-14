@@ -20,7 +20,7 @@ router = APIRouter()
     "/",
     response_model=UnitResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("unit:create"))],
+    dependencies=[Depends(require_permission("product:create"))],
 )
 def create_unit(
     data: UnitCreate,
@@ -37,7 +37,7 @@ def create_unit(
 @router.get(
     "/",
     response_model=list[UnitResponse],
-    dependencies=[Depends(require_permission("unit:list"))],
+    dependencies=[Depends(require_permission("product:read"))],
 )
 def list_units(db: Session = Depends(get_db)):
     return (
@@ -54,7 +54,7 @@ def list_units(db: Session = Depends(get_db)):
 @router.put(
     "/{unit_id}",
     response_model=UnitResponse,
-    dependencies=[Depends(require_permission("unit:update"))],
+    dependencies=[Depends(require_permission("product:update"))],
 )
 def update_unit(
     unit_id: int,
@@ -85,7 +85,7 @@ def update_unit(
 @router.delete(
     "/{unit_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("unit:delete"))],
+    dependencies=[Depends(require_permission("product:delete"))],
 )
 def delete_unit(
     unit_id: int,

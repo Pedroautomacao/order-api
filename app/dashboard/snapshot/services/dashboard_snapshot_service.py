@@ -1,3 +1,6 @@
+from datetime import date, datetime
+from decimal import Decimal
+
 from app.core.time import utcnow
 from app.dashboard.services.dashboard_overview_service import DashboardService
 from app.dashboard.services.dashboard_production_service import (
@@ -23,6 +26,19 @@ from app.dashboard.snapshot.models.dashboard_snapshot import DashboardSnapshot
 from app.ranking.services.rankings_service import RankingsService
 
 
+def _make_json_serializable(obj):
+    """Converte Decimal, datetime e outros tipos não-JSON no payload para tipos serializáveis."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: _make_json_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_make_json_serializable(v) for v in obj]
+    return obj
+
+
 class DashboardSnapshotService:
     @staticmethod
     def generate(db):
@@ -38,6 +54,8 @@ class DashboardSnapshotService:
             "producers": DashboardProducersService.get(db),
             "rankings": RankingsService.get(db),
         }
+
+        payload = _make_json_serializable(payload)
 
         snapshot = DashboardSnapshot(
             generated_at=utcnow(),

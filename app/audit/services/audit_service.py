@@ -1,6 +1,9 @@
 from collections.abc import Sequence
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import List, Tuple
+
+from sqlalchemy import distinct
+from sqlalchemy.orm import Session, selectinload
 
 from app.audit.models.audit_log import AuditLog
 from app.core.services.base_atomic_service import BaseAtomicService
@@ -19,7 +22,10 @@ class AuditService(BaseAtomicService):
         limit: int = 50,
         offset: int = 0,
     ) -> Sequence[AuditLog]:
-        query = db.query(AuditLog)
+        query = (
+            db.query(AuditLog)
+            .options(selectinload(AuditLog.user))
+        )
 
         if action:
             query = query.filter(AuditLog.action == action)
@@ -43,6 +49,25 @@ class AuditService(BaseAtomicService):
             .limit(limit)
             .all()
         )
+
+    @staticmethod
+    def get_filter_options(db: Session) -> Tuple[List[str], List[str]]:
+        """Retorna listas distintas de action e entity para preencher filtros."""
+        actions = [
+            row[0]
+            for row in db.query(distinct(AuditLog.action))
+            .filter(AuditLog.action.isnot(None))
+            .order_by(AuditLog.action)
+            .all()
+        ]
+        entities = [
+            row[0]
+            for row in db.query(distinct(AuditLog.entity))
+            .filter(AuditLog.entity.isnot(None))
+            .order_by(AuditLog.entity)
+            .all()
+        ]
+        return (actions, entities)
 
     @staticmethod
     def log(

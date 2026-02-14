@@ -1,5 +1,5 @@
 from sqlalchemy import String, Text, ForeignKey, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
 from app.database.base import Base
@@ -22,3 +22,9 @@ class AuditLog(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+    user = relationship("User", foreign_keys=[user_id], lazy="select")
+
+    @property
+    def username(self) -> str | None:
+        return self.user.username if self.user else None
