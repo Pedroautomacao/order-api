@@ -12,7 +12,7 @@ from app.products.schemas.product_schema import (
     ProductResponse,
 )
 from app.products.services.product_service import ProductService
-from app.users.dependencies.permission_dependencies import require_permission
+from app.users.dependencies.permission_dependencies import require_permission, require_any_permission
 from app.users.dependencies.auth_dependencies import get_current_user
 
 router = APIRouter()
@@ -45,7 +45,7 @@ def create_product(
 @router.get(
     "/",
     response_model=list[ProductResponse],
-    dependencies=[Depends(require_permission("product:read"))],
+    dependencies=[Depends(require_any_permission("product:read", "order:create"))],
 )
 def list_products(
     db: Session = Depends(get_db),

@@ -12,7 +12,7 @@ from app.clients.schemas.client_schema import (
 )
 from app.clients.services.client_service import ClientService
 from app.clients.exception_handler import ClientNotFoundException
-from app.users.dependencies.permission_dependencies import require_permission
+from app.users.dependencies.permission_dependencies import require_permission, require_any_permission
 from app.users.dependencies.auth_dependencies import get_current_user
 
 router = APIRouter()
@@ -39,7 +39,7 @@ def create_client(
 @router.get(
     "/",
     response_model=list[ClientResponse],
-    dependencies=[Depends(require_permission("client:read"))],
+    dependencies=[Depends(require_any_permission("client:read", "order:create"))],
 )
 def list_clients(
     db: Session = Depends(get_db),

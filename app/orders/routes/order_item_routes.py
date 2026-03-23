@@ -15,7 +15,7 @@ router = APIRouter()
 @router.patch(
     "/{order_item_id}/confirm",
     response_model=OrderResponse,
-    dependencies=[Depends(require_permission("order:read"))],
+    dependencies=[Depends(require_permission("order:produce"))],
 )
 def confirm_order_item(
     order_item_id: int,
@@ -29,6 +29,26 @@ def confirm_order_item(
         data=data,
         current_user=current_user,
     )
+    return serialize_order(order)
 
+
+@router.patch(
+    "/{order_item_id}/update-quantity",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:produce"))],
+)
+def update_item_quantity(
+    order_item_id: int,
+    data: OrderItemConfirm,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Atualiza a quantidade produzida de um item já confirmado (PRODUCED)."""
+    order = OrderItemService.update_produced_quantity(
+        db=db,
+        order_item_id=order_item_id,
+        data=data,
+        current_user=current_user,
+    )
     return serialize_order(order)
 

@@ -34,7 +34,15 @@ class OrderService(BaseAtomicService):
             raise ValueError("Order must have at least one item")
 
         # 0️⃣ validar scheduled date
-        if data.scheduled_date < date.today():
+        from app.core.time import utcnow as _utcnow
+        from datetime import timezone, timedelta
+        _now_br = _utcnow().astimezone(timezone(timedelta(hours=-3)))
+        _min_date = (
+            date.today() + timedelta(days=1)
+            if _now_br.hour >= 16
+            else date.today()
+        )
+        if data.scheduled_date < _min_date:
             raise InvalidScheduledDateException(data.scheduled_date)
 
         # 1️⃣ Buscar client

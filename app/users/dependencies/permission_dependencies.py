@@ -22,3 +22,21 @@ def require_permission(permission_code: str):
         )
 
     return dependency
+
+
+def require_any_permission(*permission_codes: str):
+    """Grants access if the user has ANY of the listed permissions."""
+    def dependency(user: User = Depends(get_current_user)):
+        if PermissionService.has_role(user, "tech"):
+            return True
+
+        permissions = PermissionService.get_user_permissions(user)
+        if any(code in permissions for code in permission_codes):
+            return True
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied",
+        )
+
+    return dependency

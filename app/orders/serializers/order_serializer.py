@@ -26,9 +26,11 @@ def serialize_order(order) -> OrderResponse:
         status=order.status,
         scheduled_date=order.scheduled_date,
         client=order.client,
+        created_by_user_id=order.created_by_user_id,
 
         produced_items=produced_items,
         current_item=current_item,
+        total_items=len(order.items) if order.items is not None else 0,
 
         can_finish=current_item is None,
     )

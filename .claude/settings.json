@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find d:EstudoProjetosGitHuborderorder-api -type f \\\\\\(-name *.py -o -name *.sql -o -name *.json \\\\\\))",
+      "Bash(grep -r \"seller\\\\|vendedor\\\\|vendor\" d:/Estudo/Projetos/GitHub/order/order-api/app --include=*.py)",
+      "Bash(python -c \"from app.orders.routes.order_routes import router\")",
+      "Bash(.venv/Scripts/python.exe -c \"from app.orders.routes.order_routes import router\")",
+      "Bash(docker compose exec api python -c \":*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls -la \"d:\\\\Estudo\\\\Projetos\\\\GitHub\\\\order\\\\order-web\\\\src\\\\store\"\" 2>/dev/null || ls -la \"/d/Estudo/Projetos/GitHub/order/order-web/src/store/\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(ls -la \"d:\\\\Estudo\\\\Projetos\\\\GitHub\\\\order\\\\order-api\\\\app\\\\core\"\" 2>/dev/null || echo \"Directory not found or error \")"
+    ]
+  }
+}

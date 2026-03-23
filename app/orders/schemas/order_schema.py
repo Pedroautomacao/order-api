@@ -32,15 +32,36 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
 
 
+class OrderUpdate(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
+
+    client_id: int = Field(
+        ...,
+        alias="clientId",
+    )
+
+    scheduled_date: date = Field(
+        ...,
+        alias="scheduledDate",
+        description="Scheduled delivery date (must be today or future)",
+    )
+
+    items: List[OrderItemCreate]
+
+
 class OrderResponse(BaseModel):
     id: int
     priority: str
     status: str
     scheduled_date: date
     client: ClientRefSchema | None = None
+    created_by_user_id: int | None = None
 
     produced_items: list[OrderItemResponse]
     current_item: OrderItemResponse | None
+    total_items: int
 
     can_finish: bool
 

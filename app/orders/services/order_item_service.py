@@ -87,3 +87,57 @@ class OrderItemService(BaseAtomicService):
         )
 
         return order
+
+    @staticmethod
+    def update_produced_quantity(
+            db: Session,
+            *,
+            order_item_id: int,
+            data,
+            current_user,
+    ):
+        item = get_order_item_or_404(db, order_item_id)
+        order = item.order
+
+        if order.assigned_user_id != current_user.id:
+            raise OrderNotAssignedToUserException()
+
+        if item.status != OrderItemStatus.PRODUCED:
+            raise InvalidOrderItemStateException(
+                item.id,
+                OrderItemStatus.PRODUCED,
+                item.status,
+            )
+
+        old_qty = item.produced_quantity
+        new_qty = data.produced_quantity
+
+        # Remove break existente e recria se necessário
+        db.query(OrderItemBreak).filter(
+            OrderItemBreak.order_item_id == item.id
+        ).delete()
+
+        if new_qty < item.quantity:
+            db.add(
+                OrderItemBreak(
+                    order_id=item.order_id,
+                    order_item_id=item.id,
+                    expected_quantity=item.quantity,
+                    confirmed_quantity=new_qty,
+                    difference_quantity=item.quantity - new_qty,
+                    created_by=current_user.id,
+                )
+            )
+
+        item.produced_quantity = new_qty
+
+        AuditService.log(
+            db=db,
+            action="order:item_update_quantity",
+            entity="order_item",
+            entity_id=item.id,
+            user_id=current_user.id,
+            description=f"Updated produced qty from {old_qty} to {new_qty}",
+        )
+
+        return order

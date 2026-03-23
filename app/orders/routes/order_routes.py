@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import or_, func, text
 from sqlalchemy.orm import Session, joinedload
@@ -11,12 +13,13 @@ from app.orders.exception_handler import DuplicateProductInOrderException, Inval
     DuplicateOrderForClientException, NoOrderAvailableException
 from app.orders.models.order import Order
 from app.orders.enums import OrderStatus
-from app.orders.schemas.order_schema import OrderCreate, OrderResponse, OrderListResponse
+from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.orders.serializers.order_serializer import serialize_order, serialize_order_list_item
 from app.orders.services.order_cancel_service import OrderCancelService
 from app.orders.services.order_finish_service import OrderFinishService
 from app.orders.services.order_reset_service import OrderResetService
 from app.orders.services.order_service import OrderService
+from app.orders.services.order_update_service import OrderUpdateService
 from app.products.exception_handler import ProductNotFoundException
 from app.users.dependencies.auth_dependencies import get_current_user
 from app.users.dependencies.permission_dependencies import require_permission
@@ -34,12 +37,15 @@ def list_orders(
     current_user=Depends(get_current_user),
     search: str | None = Query(None, description="ID do pedido, nome ou CNPJ do cliente"),
     status: str | None = Query(None, description="Filtrar por status do pedido"),
+    scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
 ):
     q = (
         db.query(Order)
         .filter(Order.is_deleted.is_(False))
         .options(joinedload(Order.client))
     )
+    if scheduled_date:
+        q = q.filter(Order.scheduled_date == scheduled_date)
     if status and status.strip():
         try:
             status_enum = OrderStatus(status.strip())
@@ -78,6 +84,7 @@ def list_fiscal_orders(
     current_user=Depends(get_current_user),
     search: str | None = Query(None, description="ID do pedido, nome ou CNPJ do cliente"),
     status: str | None = Query(None, description="Filtrar por status (Produced, Billed)"),
+    scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
 ):
     """Lista pedidos visíveis ao fiscal (Produced, Billed). Requer order:bill."""
     FISCAL_STATUSES = (OrderStatus.PRODUCED, OrderStatus.BILLED)
@@ -87,6 +94,8 @@ def list_fiscal_orders(
         .filter(Order.status.in_(FISCAL_STATUSES))
         .options(joinedload(Order.client))
     )
+    if scheduled_date:
+        q = q.filter(Order.scheduled_date == scheduled_date)
     if status and status.strip():
         try:
             status_enum = OrderStatus(status.strip())
@@ -134,6 +143,182 @@ def get_fiscal_order(
 
 
 @router.get(
+    "/producer/current",
+    response_model=OrderResponse | None,
+    dependencies=[Depends(require_permission("order:produce"))],
+)
+def get_producer_current_order(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Retorna o pedido atualmente em produção pelo produtor logado, ou null."""
+    from sqlalchemy.orm import joinedload as _jl
+    order = (
+        db.query(Order)
+        .filter(
+            Order.status == OrderStatus.PRODUCING,
+            Order.assigned_user_id == current_user.id,
+            Order.is_deleted.is_(False),
+        )
+        .options(
+            _jl(Order.client),
+            _jl(Order.items),
+        )
+        .first()
+    )
+    if not order:
+        return None
+    return serialize_order(order)
+
+
+@router.post(
+    "/producer/next",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:produce"))],
+)
+def assign_next_producer_order(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Atribui o próximo pedido Aguardando ao produtor logado."""
+    try:
+        order = OrderService.assign_next_order(db=db, current_user=current_user)
+        return serialize_order(order)
+    except NoOrderAvailableException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch(
+    "/producer/{order_id}/finish",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:produce"))],
+)
+def finish_producer_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Finaliza pedido em produção do produtor logado."""
+    order = get_order_or_404(db, order_id)
+    if order.assigned_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado.")
+    order = OrderFinishService.finish_order(db=db, order=order, current_user=current_user)
+    return serialize_order(order)
+
+
+@router.get(
+    "/seller",
+    response_model=list[OrderListResponse],
+    dependencies=[Depends(require_permission("order:list"))],
+)
+def list_seller_orders(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    search: str | None = Query(None, description="ID do pedido, nome ou CNPJ do cliente"),
+    status: str | None = Query(None, description="Filtrar por status do pedido"),
+    scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
+):
+    """Lista apenas os pedidos criados pelo vendedor logado."""
+    q = (
+        db.query(Order)
+        .filter(
+            Order.is_deleted.is_(False),
+            Order.created_by_user_id == current_user.id,
+        )
+        .options(joinedload(Order.client))
+    )
+    if scheduled_date:
+        q = q.filter(Order.scheduled_date == scheduled_date)
+    if status and status.strip():
+        try:
+            status_enum = OrderStatus(status.strip())
+            q = q.filter(Order.status == status_enum)
+        except ValueError:
+            pass
+    if search and search.strip():
+        normalized = normalize_search_string(search)
+        pattern = f"%{normalized}%"
+        conditions = []
+        if search.strip().isdigit():
+            conditions.append(Order.id == int(search.strip()))
+        use_unaccent = db.get_bind().dialect.name == "postgresql"
+        if use_unaccent:
+            conditions.append(
+                text(unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])).bindparams(
+                    search_pattern=pattern
+                )
+            )
+        else:
+            conditions.append(func.lower(Client.name).like(pattern))
+            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
+        q = q.join(Order.client).filter(or_(*conditions))
+    q = q.order_by(Order.scheduled_date.desc(), Order.id.desc())
+    return [serialize_order_list_item(o) for o in q.all()]
+
+
+@router.get(
+    "/seller/{order_id}",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:list"))],
+)
+def get_seller_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Detalhe de pedido do vendedor. Só retorna se o pedido foi criado pelo usuário logado."""
+    order = get_order_or_404(db, order_id)
+    if order.created_by_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado.")
+    return serialize_order(order)
+
+
+@router.put(
+    "/seller/{order_id}",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:list"))],
+)
+def update_seller_order(
+    order_id: int,
+    data: OrderUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Edita pedido do vendedor. Só permitido enquanto estiver Aguardando."""
+    order = get_order_or_404(db, order_id)
+    try:
+        order = OrderUpdateService.update(db=db, order=order, data=data, current_user=current_user)
+        return serialize_order(order)
+    except (ClientNotFoundException, ProductNotFoundException) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (ValueError, DuplicateProductInOrderException, InvalidScheduledDateException,
+            DuplicateOrderForClientException) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.patch(
+    "/seller/{order_id}/cancel",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:list"))],
+)
+def cancel_seller_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Cancela pedido do vendedor. Só permitido enquanto estiver Aguardando."""
+    order = get_order_or_404(db, order_id)
+    if order.created_by_user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado.")
+    if order.status != OrderStatus.AWAITING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apenas pedidos em Aguardando podem ser cancelados pelo vendedor.",
+        )
+    return serialize_order(OrderCancelService.cancel(db=db, order=order, current_user=current_user, is_admin=False))
+
+
+@router.get(
     "/{order_id}",
     response_model=OrderResponse,
     dependencies=[Depends(require_permission("order:read"))],
@@ -159,11 +344,12 @@ def create_order(
     current_user=Depends(get_current_user),
 ):
     try:
-        return OrderService.create(
+        order = OrderService.create(
             db=db,
             data=data,
             current_user=current_user,
         )
+        return serialize_order(order)
     except (ClientNotFoundException, ProductNotFoundException) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (ValueError, DuplicateProductInOrderException, InvalidScheduledDateException,
@@ -237,11 +423,11 @@ def reset_order(
             detail="Order not found",
         )
 
-    return OrderResetService.reset(
+    return serialize_order(OrderResetService.reset(
         db=db,
         order=order,
         current_user=current_user,
-    )
+    ))
 
 
 @router.patch(
@@ -271,12 +457,12 @@ def cancel_order(
 
     is_admin = current_user.role.name == "admin"
 
-    return OrderCancelService.cancel(
+    return serialize_order(OrderCancelService.cancel(
         db=db,
         order=order,
         current_user=current_user,
         is_admin=is_admin,
-    )
+    ))
 
 
 
