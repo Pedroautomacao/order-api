@@ -14,6 +14,7 @@ from app.users.schemas.user_schema import (
     UserUpdate,
     UserResponse,
     ResetPasswordRequest,
+    ChangePasswordRequest,
 )
 from app.users.schemas.role_schema import (
     RoleResponse,
@@ -441,4 +442,22 @@ def reset_user_password(
         user=user,
         new_password=data.new_password,
         admin_user=current_user,
+    )
+
+
+@router.put(
+    "/me/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def change_own_password(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Usuário logado troca a própria senha (exige senha atual)."""
+    UserService.change_own_password(
+        db=db,
+        user=current_user,
+        current_password=data.current_password,
+        new_password=data.new_password,
     )

@@ -7,7 +7,7 @@ from app.users.models.user import User
 from app.users.models.role import Role
 from app.users.models.menu_group import MenuGroup
 from app.users.schemas.user_schema import UserCreate, UserUpdate
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.audit.services.audit_service import AuditService
 
 
@@ -186,4 +186,39 @@ class UserService(BaseAtomicService):
                 f"Password reset for user '{user.username}' "
                 f"by admin '{admin_user.username}'"
             ),
+        )
+
+    @staticmethod
+    def change_own_password(
+            db: Session,
+            *,
+            user: User,
+            current_password: str,
+            new_password: str,
+    ) -> None:
+        """Troca da própria senha: exige a senha atual correta."""
+        if not verify_password(current_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Senha atual incorreta.",
+            )
+        if verify_password(new_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A nova senha deve ser diferente da atual.",
+            )
+
+        user.password_hash = hash_password(new_password)
+        db.commit()
+
+        # revoga tokens antigos por segurança
+        RefreshTokenService.revoke_all_for_user(db, user.id)
+
+        AuditService.log(
+            db=db,
+            action="user:change_password",
+            entity="user",
+            entity_id=user.id,
+            user_id=user.id,
+            description=f"User '{user.username}' changed own password",
         )
