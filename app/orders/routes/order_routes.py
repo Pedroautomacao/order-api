@@ -13,6 +13,15 @@ from app.orders.exception_handler import DuplicateProductInOrderException, Inval
     DuplicateOrderForClientException, NoOrderAvailableException, CreditLimitExceededException, \
     PaymentMethodNotAllowedException
 from app.orders.services.order_payment_service import OrderPaymentService
+from app.orders.services.order_admin_service import OrderAdminService
+from pydantic import BaseModel, Field as PydField
+
+
+class RescheduleRequest(BaseModel):
+    scheduled_date: date = PydField(alias="scheduledDate")
+
+    class Config:
+        populate_by_name = True
 from app.orders.models.order import Order
 from app.orders.enums import OrderStatus
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
@@ -484,6 +493,43 @@ def cancel_order(
         current_user=current_user,
         is_admin=is_admin,
     ))
+
+
+@router.patch(
+    "/{order_id}/prioritize",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:set_priority"))],
+)
+def prioritize_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Prioriza o pedido (prioridade = 'A')."""
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderAdminService.prioritize(db=db, order=order, current_user=current_user)
+    )
+
+
+@router.patch(
+    "/{order_id}/reschedule",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:read"))],
+)
+def reschedule_order(
+    order_id: int,
+    data: RescheduleRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Remarca a data de entrega (só pedidos em Aguardando)."""
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderAdminService.reschedule(
+            db=db, order=order, new_date=data.scheduled_date, current_user=current_user
+        )
+    )
 
 
 

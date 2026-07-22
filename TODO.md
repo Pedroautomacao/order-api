@@ -37,11 +37,14 @@ _(nada no momento)_
 
 ## Backlog / ideias
 
+- **Revisar erros genéricos no toast** — hoje várias telas mostram mensagens
+  genéricas ("Tente novamente"). O toast de erro deve ser **descritivo**,
+  refletindo o `detail` retornado pela API e indicando exatamente o que
+  aconteceu (ex.: limite de crédito, produto duplicado, data inválida).
 - Exportação de relatórios (pedidos, faturamento).
 - Notificações ou avisos para pedidos próximos do vencimento.
 - Paginação server-side nas listagens (hoje carrega tudo de uma vez).
-- Reset de senha por admin.
 
 ---
 
-_Última atualização: mar/2026_
+_Última atualização: jul/2026_

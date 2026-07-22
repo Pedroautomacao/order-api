@@ -18,7 +18,13 @@ class OrderCancelService:
         if order.status == OrderStatus.BILLED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Billed orders cannot be canceled.",
+                detail="Pedidos faturados não podem ser cancelados.",
+            )
+
+        if order.status == OrderStatus.CANCELED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pedido já está cancelado.",
             )
 
         if not is_admin and order.status == OrderStatus.PRODUCING:
