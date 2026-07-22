@@ -1,8 +1,10 @@
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List
 
+from app.orders.enums import PaymentMethod
 from app.orders.schemas.order_item_schema import OrderItemCreate, OrderItemResponse
 
 
@@ -29,6 +31,12 @@ class OrderCreate(BaseModel):
         description="Scheduled delivery date (must be today or future)",
     )
 
+    payment_method: PaymentMethod = Field(
+        PaymentMethod.CASH,
+        alias="paymentMethod",
+        description="Cash (à vista) ou Credit (a prazo)",
+    )
+
     items: List[OrderItemCreate]
 
 
@@ -48,6 +56,11 @@ class OrderUpdate(BaseModel):
         description="Scheduled delivery date (must be today or future)",
     )
 
+    payment_method: PaymentMethod = Field(
+        PaymentMethod.CASH,
+        alias="paymentMethod",
+    )
+
     items: List[OrderItemCreate]
 
 
@@ -58,6 +71,10 @@ class OrderResponse(BaseModel):
     scheduled_date: date
     client: ClientRefSchema | None = None
     created_by_user_id: int | None = None
+
+    payment_method: str
+    is_paid: bool
+    total_amount: Decimal
 
     produced_items: list[OrderItemResponse]
     current_item: OrderItemResponse | None
@@ -75,5 +92,9 @@ class OrderListResponse(BaseModel):
     scheduled_date: date
     client_id: int
     client: ClientRefSchema
+
+    payment_method: str
+    is_paid: bool
+    total_amount: Decimal
 
     model_config = ConfigDict(from_attributes=True)

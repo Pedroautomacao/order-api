@@ -23,6 +23,9 @@ class ClientService(BaseAtomicService):
             phone_number=data.phone_number,
             observations=data.observations,
             is_active=data.is_active,
+            allow_cash=data.allow_cash,
+            allow_credit=data.allow_credit,
+            credit_limit=data.credit_limit,
         )
         db.add(client)
         db.commit()

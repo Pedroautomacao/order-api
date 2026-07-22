@@ -91,3 +91,26 @@ class OrderNotAssignedToUserException(DomainException):
 class WorkItemNotFoundException(DomainException):
     def __init__(self):
         super().__init__("Open work item not found")
+
+
+class PaymentMethodNotAllowedException(DomainException):
+    def __init__(self, method_label: str):
+        super().__init__(
+            f"Este cliente não aceita pagamento {method_label}."
+        )
+
+
+class CreditLimitExceededException(DomainException):
+    """Levantada quando um pedido a prazo estoura o limite de crédito do cliente."""
+
+    def __init__(self, *, limit, outstanding, order_amount):
+        self.limit = limit
+        self.outstanding = outstanding
+        self.order_amount = order_amount
+        available = limit - outstanding
+        super().__init__(
+            "Limite de crédito atingido. "
+            f"Limite R$ {limit:.2f}, em aberto R$ {outstanding:.2f}, "
+            f"disponível R$ {available:.2f}, este pedido R$ {order_amount:.2f}. "
+            "Só o administrador pode liberar: aumentar o limite ou marcar um pedido como pago."
+        )

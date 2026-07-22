@@ -78,6 +78,24 @@ class OrderUpdateService(BaseAtomicService):
             if {i.product_id for i in existing.items} == requested_product_ids:
                 raise DuplicateOrderForClientException()
 
+        # forma de pagamento + validação de crédito (exclui o próprio pedido do "em aberto")
+        from app.orders.enums import PaymentMethod
+        from app.orders.services.credit_service import CreditService
+
+        payment_method = getattr(data, "payment_method", None) or order.payment_method
+        if not isinstance(payment_method, PaymentMethod):
+            payment_method = PaymentMethod(payment_method)
+        CreditService.validate_payment_method(client, payment_method)
+
+        total_amount = CreditService.compute_order_amount(db, data.items)
+        CreditService.check_credit_or_raise(
+            db,
+            client=client,
+            payment_method=payment_method,
+            order_amount=total_amount,
+            exclude_order_id=order.id,
+        )
+
         # replace items
         for item in order.items:
             db.delete(item)
@@ -104,6 +122,8 @@ class OrderUpdateService(BaseAtomicService):
         order.client_id = client.id
         order.scheduled_date = data.scheduled_date
         order.priority = client.priority
+        order.payment_method = payment_method
+        order.total_amount = total_amount
 
         AuditService.log(
             db=db,

@@ -107,6 +107,10 @@ def list_users(
     return q.order_by(User.username).all()
 
 
+# Perfis ocultos: não aparecem na UI de gestão de usuários (atribuídos só manualmente)
+HIDDEN_ROLE_NAMES = ("Tech",)
+
+
 @router.get(
     "/roles/list",
     response_model=list[RoleResponse],
@@ -115,6 +119,7 @@ def list_users(
 def list_roles(db: Session = Depends(get_db)):
     return (
         db.query(Role)
+        .filter(Role.name.notin_(HIDDEN_ROLE_NAMES))
         .options(
             selectinload(Role.permissions),
             selectinload(Role.menu_groups),

@@ -91,6 +91,26 @@ class OrderService(BaseAtomicService):
             if existing_product_ids == requested_product_ids:
                 raise DuplicateOrderForClientException()
 
+        # 1.5️⃣ forma de pagamento + validação de crédito
+        from decimal import Decimal
+        from app.orders.enums import PaymentMethod
+        from app.orders.services.credit_service import CreditService
+
+        payment_method = getattr(data, "payment_method", None) or PaymentMethod.CASH
+        if not isinstance(payment_method, PaymentMethod):
+            payment_method = PaymentMethod(payment_method)
+
+        CreditService.validate_payment_method(client, payment_method)
+
+        # calcular total do pedido (Σ preço × qtd) e validar limite se a prazo
+        total_amount = CreditService.compute_order_amount(db, data.items)
+        CreditService.check_credit_or_raise(
+            db,
+            client=client,
+            payment_method=payment_method,
+            order_amount=total_amount,
+        )
+
         # 2️⃣ Criar order
         order = Order(
             client_id=client.id,
@@ -98,6 +118,9 @@ class OrderService(BaseAtomicService):
             priority=client.priority,
             status=OrderStatus.AWAITING,
             scheduled_date=data.scheduled_date,
+            payment_method=payment_method,
+            is_paid=False,
+            total_amount=total_amount,
         )
 
         db.add(order)

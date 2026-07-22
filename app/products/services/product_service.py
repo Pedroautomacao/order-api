@@ -36,6 +36,7 @@ class ProductService(BaseAtomicService):
             description=data.description,
             sku=data.sku,
             is_active=data.is_active,
+            unit_price=data.unit_price,
             unit_of_measure_id=unit.id,
         )
         db.add(product)

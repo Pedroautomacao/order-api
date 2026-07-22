@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, ConfigDict
+from decimal import Decimal
+
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 class ClientBase(BaseModel):
@@ -31,6 +33,19 @@ class ClientBase(BaseModel):
     observations: str | None = None
     is_active: bool = Field(True, alias="isActive")
 
+    # Meios de pagamento aceitos (ao menos um deve ser True)
+    allow_cash: bool = Field(True, alias="allowCash")
+    allow_credit: bool = Field(True, alias="allowCredit")
+
+    # Limite de crédito a prazo (R$)
+    credit_limit: Decimal = Field(0, alias="creditLimit", ge=0)
+
+    @model_validator(mode="after")
+    def _at_least_one_payment(self):
+        if not self.allow_cash and not self.allow_credit:
+            raise ValueError("Selecione pelo menos uma forma de pagamento.")
+        return self
+
 
 class ClientCreate(ClientBase):
     pass
@@ -60,6 +75,10 @@ class ClientUpdate(BaseModel):
     observations: str | None = None
     is_active: bool | None = Field(None, alias="isActive")
 
+    allow_cash: bool | None = Field(None, alias="allowCash")
+    allow_credit: bool | None = Field(None, alias="allowCredit")
+    credit_limit: Decimal | None = Field(None, alias="creditLimit", ge=0)
+
 
 class ClientResponse(BaseModel):
     id: int
@@ -71,5 +90,19 @@ class ClientResponse(BaseModel):
     observations: str | None
     is_active: bool
 
+    allow_cash: bool
+    allow_credit: bool
+    credit_limit: Decimal
+
     class Config:
         from_attributes = True
+
+
+class ClientCreditResponse(BaseModel):
+    """Situação de crédito do cliente (usada no formulário de pedido)."""
+    client_id: int
+    credit_limit: Decimal
+    outstanding: Decimal
+    available: Decimal
+    allow_cash: bool
+    allow_credit: bool

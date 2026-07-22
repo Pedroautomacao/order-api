@@ -9,13 +9,46 @@ from app.clients.schemas.client_schema import (
     ClientCreate,
     ClientUpdate,
     ClientResponse,
+    ClientCreditResponse,
 )
 from app.clients.services.client_service import ClientService
 from app.clients.exception_handler import ClientNotFoundException
+from app.orders.services.credit_service import CreditService
 from app.users.dependencies.permission_dependencies import require_permission, require_any_permission
 from app.users.dependencies.auth_dependencies import get_current_user
 
 router = APIRouter()
+
+
+@router.get(
+    "/{client_id}/credit",
+    response_model=ClientCreditResponse,
+    dependencies=[Depends(require_any_permission("client:read", "order:create"))],
+)
+def get_client_credit(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Situação de crédito do cliente: limite, em aberto (a prazo não pago) e disponível."""
+    client = (
+        db.query(Client)
+        .filter(Client.id == client_id, Client.is_deleted.is_(False))
+        .first()
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    outstanding = CreditService.outstanding_credit(db, client_id)
+    limit = client.credit_limit or 0
+    return ClientCreditResponse(
+        client_id=client.id,
+        credit_limit=limit,
+        outstanding=outstanding,
+        available=limit - outstanding,
+        allow_cash=client.allow_cash,
+        allow_credit=client.allow_credit,
+    )
 
 
 @router.post(

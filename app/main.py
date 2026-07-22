@@ -26,6 +26,7 @@ from app.dashboard.snapshot.routes.dashboard_snapshot_routes import router as da
 from app.dashboard.routes.dashboard_clients_routes import router as dashboard_clients_router
 from app.dashboard.routes.dashboard_products_routes import router as dashboard_products_router
 from app.dashboard.routes.dashboard_producers_routes import router as dashboard_producers_router
+from app.analytics.routes import router as analytics_router
 
 app = FastAPI(title="Order API")
 
@@ -75,6 +76,7 @@ app.include_router(dashboard_snapshot_router, prefix="/dashboard-snapshot", tags
 app.include_router(dashboard_clients_router, prefix="/dashboard-clients", tags=["Dashboard-Clients"])
 app.include_router(dashboard_products_router, prefix="/dashboard-products", tags=["Dashboard-Products"])
 app.include_router(dashboard_producers_router, prefix="/dashboard-producers", tags=["Dashboard-Producers"])
+app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 
 
 @app.on_event("startup")

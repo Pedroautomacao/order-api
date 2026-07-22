@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -69,6 +69,25 @@ class DashboardService:
             .scalar()
         )
 
+        # Pedidos por dia — últimos 7 dias (por data de entrega), incluindo dias vazios
+        days = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
+        rows = (
+            db.query(Order.scheduled_date, func.count(Order.id))
+            .filter(
+                Order.scheduled_date.between(days[0], days[-1]),
+                Order.is_deleted.is_(False),
+            )
+            .group_by(Order.scheduled_date)
+            .all()
+        )
+        by_day_map = {d: 0 for d in days}
+        for d, count in rows:
+            if d in by_day_map:
+                by_day_map[d] = count
+        orders_by_day = [
+            {"date": d.isoformat(), "count": by_day_map[d]} for d in days
+        ]
+
         return {
             "orders_today": {
                 "awaiting": orders_by_status[OrderStatus.AWAITING],
@@ -81,4 +100,5 @@ class DashboardService:
             "completion_rate_today": round(completion_rate, 2),
             "overdue_orders": overdue_orders,
             "produced_not_billed": produced_not_billed,
+            "orders_by_day": orders_by_day,
         }

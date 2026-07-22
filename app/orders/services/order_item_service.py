@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from sqlalchemy.orm import Session
 
 from app.audit.services.audit_service import AuditService
@@ -6,7 +8,8 @@ from app.core.time import utcnow
 from app.order_item_breaks.models import OrderItemBreak
 from app.orders.dependencies import get_order_item_or_404
 from app.orders.enums import OrderItemStatus
-from app.orders.exception_handler import OrderNotAssignedToUserException, InvalidOrderItemStateException
+from app.orders.exception_handler import OrderNotAssignedToUserException, InvalidOrderItemStateException, \
+    InvalidProducedQuantityException
 from app.orders.models.work_item import WorkItem
 from app.orders.repositories.work_item_repository import get_open_work_item
 from app.orders.utils.resolve_current_item import resolve_current_item
@@ -34,10 +37,14 @@ class OrderItemService(BaseAtomicService):
                 item.status,
             )
 
+        if data.produced_quantity is None or data.produced_quantity <= 0:
+            raise InvalidProducedQuantityException()
+
         expected = item.quantity
         if data.produced_quantity < expected:
             db.add(
                 OrderItemBreak(
+                    id=uuid4(),
                     order_id=item.order_id,
                     order_item_id=item.id,
                     expected_quantity=expected,
@@ -112,6 +119,9 @@ class OrderItemService(BaseAtomicService):
         old_qty = item.produced_quantity
         new_qty = data.produced_quantity
 
+        if new_qty is None or new_qty <= 0:
+            raise InvalidProducedQuantityException()
+
         # Remove break existente e recria se necessário
         db.query(OrderItemBreak).filter(
             OrderItemBreak.order_item_id == item.id
@@ -120,6 +130,7 @@ class OrderItemService(BaseAtomicService):
         if new_qty < item.quantity:
             db.add(
                 OrderItemBreak(
+                    id=uuid4(),
                     order_id=item.order_id,
                     order_item_id=item.id,
                     expected_quantity=item.quantity,

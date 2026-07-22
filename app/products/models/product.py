@@ -1,4 +1,6 @@
-from sqlalchemy import String, Boolean, ForeignKey
+from decimal import Decimal
+
+from sqlalchemy import String, Boolean, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -13,6 +15,13 @@ class Product(Base, AuditMixin):
     name: Mapped[str] = mapped_column(
         String(150),
         nullable=False,
+    )
+
+    unit_price: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+        default=0,
+        comment="Preço unitário de venda",
     )
 
     description: Mapped[str | None] = mapped_column(

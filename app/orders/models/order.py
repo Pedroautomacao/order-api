@@ -1,11 +1,12 @@
 from datetime import date
+from decimal import Decimal
 
-from sqlalchemy import ForeignKey, String, Enum, Date
+from sqlalchemy import ForeignKey, String, Enum, Date, Boolean, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.mixins import AuditMixin
-from app.orders.enums import OrderStatus
+from app.orders.enums import OrderStatus, PaymentMethod
 
 
 class Order(Base, AuditMixin):
@@ -40,6 +41,27 @@ class Order(Base, AuditMixin):
         default=OrderStatus.AWAITING,
         nullable=False,
         index=True,
+    )
+
+    # Forma de pagamento escolhida na criação
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        Enum(PaymentMethod),
+        default=PaymentMethod.CASH,
+        nullable=False,
+    )
+
+    # Pago (marcado pelo admin). Só pedidos a prazo não pagos contam no limite.
+    is_paid: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    # Valor total do pedido no momento da criação (snapshot: Σ preço × qtd)
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        default=0,
+        nullable=False,
     )
 
     # 🔗 RELATIONSHIPS

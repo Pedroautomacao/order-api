@@ -10,6 +10,9 @@ def serialize_order_list_item(order) -> OrderListResponse:
         scheduled_date=order.scheduled_date,
         client_id=order.client_id,
         client=order.client,
+        payment_method=order.payment_method.value if hasattr(order.payment_method, "value") else order.payment_method,
+        is_paid=order.is_paid,
+        total_amount=order.total_amount,
     )
 
 
@@ -27,6 +30,10 @@ def serialize_order(order) -> OrderResponse:
         scheduled_date=order.scheduled_date,
         client=order.client,
         created_by_user_id=order.created_by_user_id,
+
+        payment_method=order.payment_method.value if hasattr(order.payment_method, "value") else order.payment_method,
+        is_paid=order.is_paid,
+        total_amount=order.total_amount,
 
         produced_items=produced_items,
         current_item=current_item,

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.units.schemas.unit_schema import UnitResponse
@@ -11,6 +13,13 @@ class ProductBase(BaseModel):
     name: str
     description: str | None = None
     sku: str
+
+    unit_price: Decimal = Field(
+        default=0,
+        alias="unitPrice",
+        ge=0,
+        description="Preço unitário de venda",
+    )
 
     unit_of_measure_id: int = Field(
         ...,
@@ -36,6 +45,12 @@ class ProductUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
 
+    unit_price: Decimal | None = Field(
+        default=None,
+        alias="unitPrice",
+        ge=0,
+    )
+
     unit_of_measure_id: int | None = Field(
         default=None,
         alias="unitOfMeasureId",
@@ -53,6 +68,7 @@ class ProductResponse(BaseModel):
     description: str | None
     sku: str
     is_active: bool
+    unit_price: Decimal
 
     unit: UnitResponse
 

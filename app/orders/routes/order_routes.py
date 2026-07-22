@@ -10,7 +10,9 @@ from app.core.utils.search import normalize_search_string, unaccent_like_sql
 from app.database.deps import get_db
 from app.orders.dependencies import get_order_or_404
 from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
-    DuplicateOrderForClientException, NoOrderAvailableException
+    DuplicateOrderForClientException, NoOrderAvailableException, CreditLimitExceededException, \
+    PaymentMethodNotAllowedException
+from app.orders.services.order_payment_service import OrderPaymentService
 from app.orders.models.order import Order
 from app.orders.enums import OrderStatus
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
@@ -292,7 +294,8 @@ def update_seller_order(
     except (ClientNotFoundException, ProductNotFoundException) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (ValueError, DuplicateProductInOrderException, InvalidScheduledDateException,
-            DuplicateOrderForClientException) as e:
+            DuplicateOrderForClientException, CreditLimitExceededException,
+            PaymentMethodNotAllowedException) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
@@ -353,11 +356,29 @@ def create_order(
     except (ClientNotFoundException, ProductNotFoundException) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (ValueError, DuplicateProductInOrderException, InvalidScheduledDateException,
-            DuplicateOrderForClientException) as e:
+            DuplicateOrderForClientException, CreditLimitExceededException,
+            PaymentMethodNotAllowedException) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.patch(
+    "/{order_id}/pay",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:mark_paid"))],
+)
+def mark_order_paid(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Marca um pedido como pago (somente admin). Libera o limite de crédito do cliente."""
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderPaymentService.mark_paid(db=db, order=order, current_user=current_user)
+    )
 
 
 @router.post(
