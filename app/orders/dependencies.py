@@ -7,10 +7,11 @@ from app.products.models.product import Product
 
 
 def with_detail_relations(query):
-    """Carrega a cadeia que serialize_order percorre (itens -> produto ->
-    unidade). Sem isso cada item vira duas queries extras."""
+    """Carrega a cadeia que serialize_order percorre (criador, cliente e
+    itens -> produto -> unidade). Sem isso cada item vira queries extras."""
     return query.options(
         selectinload(Order.client),
+        selectinload(Order.created_by),
         selectinload(Order.items)
         .selectinload(OrderItem.product)
         .selectinload(Product.unit_of_measure),

@@ -123,3 +123,37 @@ class TestSplitOrderItems:
         assert primeiro is not None
         assert primeiro.id == segundo.id
         assert primeiro.id == min(i.id for i in order.items)
+
+
+class TestAutoria:
+    """A tela de detalhe mostra quem registrou o pedido, não o id."""
+
+    def test_response_expoe_o_criador_com_nome(self, catalog):
+        order = make_order(catalog)
+
+        criador = serialize_order(order).created_by
+
+        assert criador is not None
+        assert criador.id == catalog.user.id
+        assert criador.username == "produtor"
+        assert criador.full_name == "Produtor Teste"
+
+    def test_created_by_user_id_continua_no_contrato(self, catalog):
+        """Campo antigo mantido: o front pode estar em versão anterior."""
+        order = make_order(catalog)
+
+        assert serialize_order(order).created_by_user_id == catalog.user.id
+
+    def test_full_name_cai_no_username_sem_nome(self, catalog):
+        from app.users.models.user import User
+
+        anonimo = User(
+            username="semnome",
+            first_name="",
+            last_name="",
+            cpf="999",
+            password_hash="x",
+            is_active=True,
+        )
+
+        assert anonimo.full_name == "semnome"

@@ -15,6 +15,16 @@ class ClientRefSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserRefSchema(BaseModel):
+    """Referência mínima a um usuário, para exibir autoria."""
+
+    id: int
+    username: str
+    full_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrderCreate(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True
@@ -72,6 +82,8 @@ class OrderResponse(BaseModel):
     client_id: int
     client: ClientRefSchema | None = None
     created_by_user_id: int | None = None
+    # quem registrou o pedido — a tela de detalhe mostra o nome, não o id
+    created_by: UserRefSchema | None = None
 
     payment_method: str
     is_paid: bool

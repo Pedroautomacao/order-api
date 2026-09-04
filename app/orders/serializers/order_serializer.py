@@ -43,6 +43,7 @@ def serialize_order(order) -> OrderResponse:
         client_id=order.client_id,
         client=order.client,
         created_by_user_id=order.created_by_user_id,
+        created_by=order.created_by,
 
         payment_method=_payment_method(order),
         is_paid=order.is_paid,

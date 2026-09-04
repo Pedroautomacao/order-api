@@ -208,6 +208,7 @@ def get_producer_current_order(
         )
         .options(
             _jl(Order.client),
+            _jl(Order.created_by),
             _jl(Order.items).joinedload(OrderItem.product).joinedload(Product.unit_of_measure),
         )
         .order_by(Order.id.asc())

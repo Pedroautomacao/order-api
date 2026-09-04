@@ -48,3 +48,9 @@ class User(Base, AuditMixin):
         secondary="user_roles",
         back_populates="users",
     )
+
+    @property
+    def full_name(self) -> str:
+        """Nome de exibição. Cai no username quando não houver nome."""
+        nome = f"{self.first_name or ''} {self.last_name or ''}".strip()
+        return nome or self.username
