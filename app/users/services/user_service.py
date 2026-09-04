@@ -62,7 +62,7 @@ class UserService:
                 entity="user",
                 entity_id=user.id,
                 user_id=current_user.id,
-                description=f"User {user.username} created by {current_user.username}",
+                description=f"Usuário {user.username} cadastrado",
             )
 
         # Load relationships
@@ -118,7 +118,7 @@ class UserService:
                 entity="user",
                 entity_id=user.id,
                 user_id=current_user.id,
-                description=f"User {user.username} updated by {current_user.username}",
+                description=f"Usuário {user.username} atualizado",
             )
 
         # Load relationships
@@ -151,7 +151,7 @@ class UserService:
                 entity="user",
                 entity_id=user.id,
                 user_id=current_user.id,
-                description=f"User {user.username} soft deleted by {current_user.username} ",
+                description=f"Usuário {user.username} excluído",
             )
 
     @staticmethod
@@ -175,8 +175,8 @@ class UserService:
                 entity_id=user.id,
                 user_id=admin_user.id,
                 description=(
-                    f"Password reset for user '{user.username}' "
-                    f"by admin '{admin_user.username}'"
+                    f"Senha do usuário {user.username} redefinida pelo "
+                    "administrador; sessões ativas encerradas"
                 ),
             )
 
@@ -212,5 +212,7 @@ class UserService:
                 entity="user",
                 entity_id=user.id,
                 user_id=user.id,
-                description=f"User '{user.username}' changed own password",
+                description=(
+                    "Senha alterada pelo próprio usuário; sessões ativas encerradas"
+                ),
             )

@@ -33,7 +33,7 @@ class OrderPaymentService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} marked as paid by {current_user.username}",
+                description=f"Pedido #{order.id} marcado como pago",
             )
 
         db.refresh(order)

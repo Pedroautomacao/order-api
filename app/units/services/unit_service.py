@@ -33,7 +33,7 @@ class UnitService:
                 entity="unit_of_measure",
                 entity_id=unit.id,
                 user_id=current_user.id,
-                description=f"Unit {unit.code} created by {current_user.username}",
+                description=f"Unidade {unit.name} ({unit.code}) cadastrada",
             )
 
         db.refresh(unit)
@@ -57,7 +57,7 @@ class UnitService:
                 entity="unit_of_measure",
                 entity_id=unit.id,
                 user_id=current_user.id,
-                description=f"Unit {unit.code} updated by {current_user.username}",
+                description=f"Unidade {unit.name} ({unit.code}) atualizada",
             )
 
         db.refresh(unit)
@@ -82,5 +82,5 @@ class UnitService:
                 entity="unit_of_measure",
                 entity_id=unit.id,
                 user_id=current_user.id,
-                description=f"Unit {unit.code} deleted by {current_user.username}",
+                description=f"Unidade {unit.name} ({unit.code}) excluída",
             )

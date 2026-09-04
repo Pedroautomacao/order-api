@@ -157,7 +157,8 @@ class OrderService:
                 entity_id=order.id,
                 user_id=current_user.id,
                 description=(
-                    f"Order {order.id} created by {current_user.username}"
+                    f"Pedido #{order.id} criado para {client.name} "
+                    f"com entrega em {data.scheduled_date.strftime('%d/%m/%Y')}"
                 ),
             )
 
@@ -246,7 +247,7 @@ class OrderService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} assigned to {current_user.username}",
+                description=f"Pedido #{order.id} atribuído à produção",
             )
 
         db.refresh(order)

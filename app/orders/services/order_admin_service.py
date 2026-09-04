@@ -31,7 +31,7 @@ class OrderAdminService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} priorizado (A) por {current_user.username}",
+                description=f"Pedido #{order.id} priorizado (prioridade A)",
             )
 
         db.refresh(order)
@@ -61,7 +61,10 @@ class OrderAdminService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} remarcado de {old} para {new_date} por {current_user.username}",
+                description=(
+                    f"Entrega do pedido #{order.id} remarcada de "
+                    f"{old.strftime('%d/%m/%Y')} para {new_date.strftime('%d/%m/%Y')}"
+                ),
             )
 
         db.refresh(order)

@@ -31,7 +31,7 @@ class BillingService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} billed by {current_user.username}",
+                description=f"Pedido #{order.id} faturado",
             )
 
         db.refresh(order)

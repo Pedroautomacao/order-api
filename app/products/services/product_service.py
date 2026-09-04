@@ -49,7 +49,7 @@ class ProductService:
                 entity="product",
                 entity_id=product.id,
                 user_id=current_user.id,
-                description=f"Product {product.name} created by {current_user.username}",
+                description=f"Produto {product.name} cadastrado",
             )
 
         db.refresh(product)
@@ -94,10 +94,7 @@ class ProductService:
                 entity="product",
                 entity_id=product.id,
                 user_id=current_user.id,
-                description=(
-                    f"Product {product.name} updated by "
-                    f"{current_user.username}"
-                ),
+                description=f"Produto {product.name} atualizado",
             )
 
         db.refresh(product)
@@ -122,5 +119,5 @@ class ProductService:
                 entity="product",
                 entity_id=product.id,
                 user_id=current_user.id,
-                description=f"Product {product.name} soft deleted by {current_user.username}",
+                description=f"Produto {product.name} excluído",
             )

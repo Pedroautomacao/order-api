@@ -202,7 +202,7 @@ def create_menu_group(
             entity="menu_group",
             entity_id=group.id,
             user_id=current_user.id,
-            description=f"Grupo de menu '{group.name}' (code={group.code}) criado por {current_user.username}",
+            description=f"Grupo de menu {group.name} ({group.code}) criado",
         )
     db.refresh(group)
     return group
@@ -249,7 +249,7 @@ def update_menu_group(
             entity="menu_group",
             entity_id=group.id,
             user_id=current_user.id,
-            description=f"Grupo de menu '{group.name}' (id={group_id}) atualizado por {current_user.username}",
+            description=f"Grupo de menu {group.name} atualizado",
         )
     db.refresh(group)
     return group
@@ -285,7 +285,7 @@ def update_role(
             entity="role",
             entity_id=role.id,
             user_id=current_user.id,
-            description=f"Perfil '{role.name}' (id={role_id}) atualizado por {current_user.username}",
+            description=f"Perfil de acesso {role.name} atualizado",
         )
     role = (
         db.query(Role)

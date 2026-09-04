@@ -37,7 +37,7 @@ class ClientService:
                 entity="client",
                 entity_id=client.id,
                 user_id=current_user.id,
-                description=f"Client {client.name} created by {current_user.username}",
+                description=f"Cliente {client.name} cadastrado",
             )
 
         db.refresh(client)
@@ -61,7 +61,7 @@ class ClientService:
                 entity="client",
                 entity_id=client.id,
                 user_id=current_user.id,
-                description=f"Client {client.name} updated by {current_user.username}",
+                description=f"Cliente {client.name} atualizado",
             )
 
         db.refresh(client)
@@ -86,5 +86,5 @@ class ClientService:
                 entity="client",
                 entity_id=client.id,
                 user_id=current_user.id,
-                description=f"Client {client.name} soft deleted by {current_user.username}",
+                description=f"Cliente {client.name} excluído",
             )

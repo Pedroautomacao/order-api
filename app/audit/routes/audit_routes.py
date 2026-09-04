@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
-from app.audit.schemas.audit_schema import AuditLogResponse, AuditFiltersOptions
+from app.audit.labels import action_label, entity_label
+from app.audit.schemas.audit_schema import (
+    AuditFilterOption,
+    AuditFiltersOptions,
+    AuditLogResponse,
+)
 from app.audit.services.audit_service import AuditService
 from app.users.dependencies.permission_dependencies import require_permission
 
@@ -63,5 +68,16 @@ def list_audit_logs(
     dependencies=[Depends(require_permission("audit:read"))],
 )
 def get_audit_filter_options(db: Session = Depends(get_db)):
+    """Opções dos filtros já rotuladas e ordenadas pelo texto em português."""
     actions, entities = AuditService.get_filter_options(db)
-    return AuditFiltersOptions(actions=actions, entities=entities)
+
+    def opcoes(valores, rotulo):
+        return sorted(
+            (AuditFilterOption(value=v, label=rotulo(v)) for v in valores),
+            key=lambda o: o.label.lower(),
+        )
+
+    return AuditFiltersOptions(
+        actions=opcoes(actions, action_label),
+        entities=opcoes(entities, entity_label),
+    )

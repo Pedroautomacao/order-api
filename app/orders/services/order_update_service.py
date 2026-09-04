@@ -147,7 +147,10 @@ class OrderUpdateService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} updated by {current_user.username}",
+                description=(
+                    f"Pedido #{order.id} editado: {len(data.items)} item(ns), "
+                    f"entrega em {data.scheduled_date.strftime('%d/%m/%Y')}"
+                ),
             )
 
         db.refresh(order)

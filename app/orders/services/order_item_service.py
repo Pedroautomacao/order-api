@@ -16,6 +16,15 @@ from app.orders.repositories.work_item_repository import find_open_work_item
 from app.orders.utils.resolve_current_item import resolve_current_item
 
 
+def _produto(item) -> str:
+    """Nome do produto com a unidade, para a descrição do log."""
+    product = getattr(item, "product", None)
+    if product is None:
+        return f"Item #{item.id}"
+    unit = getattr(getattr(product, "unit_of_measure", None), "code", None)
+    return f"{product.name} ({unit})" if unit else product.name
+
+
 class OrderItemService:
     @staticmethod
     def confirm_item(
@@ -106,7 +115,10 @@ class OrderItemService:
                 entity="order_item",
                 entity_id=item.id,
                 user_id=current_user.id,
-                description=f"Produced {data.produced_quantity}",
+                description=(
+                    f"{_produto(item)}: {data.produced_quantity} confirmado(s) "
+                    f"de {expected} previsto(s)"
+                ),
             )
 
         return order
@@ -181,7 +193,10 @@ class OrderItemService:
                 entity="order_item",
                 entity_id=item.id,
                 user_id=current_user.id,
-                description=f"Updated produced qty from {old_qty} to {new_qty}",
+                description=(
+                    f"{_produto(item)}: quantidade produzida corrigida de "
+                    f"{old_qty} para {new_qty}"
+                ),
             )
 
         return order

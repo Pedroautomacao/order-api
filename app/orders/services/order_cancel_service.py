@@ -92,7 +92,7 @@ class OrderCancelService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} canceled by {current_user.username}",
+                description=f"Pedido #{order.id} cancelado",
             )
 
         db.refresh(order)

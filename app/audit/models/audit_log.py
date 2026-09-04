@@ -2,6 +2,7 @@ from sqlalchemy import String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
+from app.audit.labels import action_label, entity_label
 from app.database.base import Base
 
 
@@ -28,3 +29,12 @@ class AuditLog(Base):
     @property
     def username(self) -> str | None:
         return self.user.username if self.user else None
+
+    @property
+    def action_label(self) -> str:
+        """Ação em português. A chave crua fica em `action`."""
+        return action_label(self.action)
+
+    @property
+    def entity_label(self) -> str:
+        return entity_label(self.entity)

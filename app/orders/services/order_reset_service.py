@@ -85,7 +85,10 @@ class OrderResetService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} reset by {current_user.username}",
+                description=(
+                    f"Produção do pedido #{order.id} reiniciada: itens voltaram "
+                    "para Aguardando e os apontamentos do ciclo foram anulados"
+                ),
             )
 
         db.refresh(order)

@@ -50,7 +50,10 @@ class OrderFinishService:
                 entity="order",
                 entity_id=order.id,
                 user_id=current_user.id,
-                description=f"Order {order.id} finished",
+                description=(
+                    f"Produção do pedido #{order.id} finalizada "
+                    f"({len(order.items)} item(ns))"
+                ),
             )
 
         db.refresh(order)
