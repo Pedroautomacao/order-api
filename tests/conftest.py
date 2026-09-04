@@ -189,7 +189,9 @@ def catalog(sqlite_session):
     client = _Client(
         name="Cliente Teste",
         priority="A",
-        cpf_cnpj="123",
+        # sem dígitos que colidam com ids pequenos: a busca por id usa OR com
+        # LIKE em nome e CNPJ, e "123" casaria com o pedido de id 1, 2 ou 3
+        cpf_cnpj="00.000.000/0000-00",
         address="Rua 1",
         phone_number="9",
         observations="",

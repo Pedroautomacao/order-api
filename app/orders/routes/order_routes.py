@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import or_, func, text
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.clients.exception_handler import ClientNotFoundException
 from app.clients.models.client import Client
@@ -26,6 +26,7 @@ from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
 from app.products.models.product import Product
 from app.orders.enums import OrderStatus
+from app.core.schemas.pagination import Page
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.orders.serializers.order_serializer import serialize_order, serialize_order_list_item
 from app.orders.services.order_cancel_service import OrderCancelService
@@ -40,9 +41,51 @@ from app.users.dependencies.permission_dependencies import require_permission
 router = APIRouter()
 
 
+def _apply_order_filters(
+    q,
+    *,
+    db: Session,
+    search: str | None,
+    status: str | None,
+    scheduled_date: date | None,
+):
+    """Filtros de listagem de pedido, compartilhados pelas três telas.
+
+    Status desconhecido é ignorado em vez de virar erro, mantendo o
+    comportamento que as telas já esperam.
+    """
+    if scheduled_date:
+        q = q.filter(Order.scheduled_date == scheduled_date)
+
+    if status and status.strip():
+        try:
+            q = q.filter(Order.status == OrderStatus(status.strip()))
+        except ValueError:
+            pass
+
+    if search and search.strip():
+        normalized = normalize_search_string(search)
+        pattern = f"%{normalized}%"
+        conditions = []
+        if search.strip().isdigit():
+            conditions.append(Order.id == int(search.strip()))
+        if db.get_bind().dialect.name == "postgresql":
+            conditions.append(
+                text(
+                    unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])
+                ).bindparams(search_pattern=pattern)
+            )
+        else:
+            conditions.append(func.lower(Client.name).like(pattern))
+            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
+        q = q.join(Order.client).filter(or_(*conditions))
+
+    return q
+
+
 @router.get(
     "/",
-    response_model=list[OrderListResponse],
+    response_model=Page[OrderListResponse],
     dependencies=[Depends(require_permission("order:read"))],
 )
 def list_orders(
@@ -51,40 +94,41 @@ def list_orders(
     search: str | None = Query(None, description="ID do pedido, nome ou CNPJ do cliente"),
     status: str | None = Query(None, description="Filtrar por status do pedido"),
     scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1, description="Página, começando em 1"),
+    page_size: int = Query(20, ge=1, le=100, description="Itens por página"),
 ):
-    q = (
-        db.query(Order)
-        .filter(Order.is_deleted.is_(False))
-        .options(joinedload(Order.client))
+    """Todos os pedidos, dos mais recentes para os mais antigos por data de entrega.
+
+    A paginação é feita no banco: sem ela a tela precisaria baixar a base inteira
+    para paginar no cliente.
+    """
+    base = _apply_order_filters(
+        db.query(Order).filter(Order.is_deleted.is_(False)),
+        db=db,
+        search=search,
+        status=status,
+        scheduled_date=scheduled_date,
     )
-    if scheduled_date:
-        q = q.filter(Order.scheduled_date == scheduled_date)
-    if status and status.strip():
-        try:
-            status_enum = OrderStatus(status.strip())
-            q = q.filter(Order.status == status_enum)
-        except ValueError:
-            pass
-    if search and search.strip():
-        normalized = normalize_search_string(search)
-        pattern = f"%{normalized}%"
-        conditions = []
-        if search.strip().isdigit():
-            conditions.append(Order.id == int(search.strip()))
-        use_unaccent = db.get_bind().dialect.name == "postgresql"
-        if use_unaccent:
-            conditions.append(
-                text(unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])).bindparams(
-                    search_pattern=pattern
-                )
-            )
-        else:
-            conditions.append(func.lower(Client.name).like(pattern))
-            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
-        q = q.join(Order.client).filter(or_(*conditions))
-    q = q.order_by(Order.scheduled_date.desc(), Order.id.desc())
-    orders = q.all()
-    return [serialize_order_list_item(o) for o in orders]
+
+    total = base.with_entities(func.count(Order.id)).order_by(None).scalar() or 0
+
+    orders = (
+        # selectinload em vez de joinedload: com `search` o filtro já fez INNER
+        # JOIN em clients, e o joinedload adicionava um segundo LEFT OUTER JOIN
+        # aliasado da mesma tabela só para carregar o relacionamento
+        base.options(selectinload(Order.client))
+        .order_by(Order.scheduled_date.desc(), Order.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return Page[OrderListResponse].build(
+        [serialize_order_list_item(o) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
@@ -107,32 +151,21 @@ def list_fiscal_orders(
         .filter(Order.status.in_(FISCAL_STATUSES))
         .options(joinedload(Order.client))
     )
-    if scheduled_date:
-        q = q.filter(Order.scheduled_date == scheduled_date)
+    # o status pedido só vale se estiver dentro do recorte do fiscal
+    fiscal_status = None
     if status and status.strip():
         try:
-            status_enum = OrderStatus(status.strip())
-            if status_enum in FISCAL_STATUSES:
-                q = q.filter(Order.status == status_enum)
+            if OrderStatus(status.strip()) in FISCAL_STATUSES:
+                fiscal_status = status
         except ValueError:
             pass
-    if search and search.strip():
-        normalized = normalize_search_string(search)
-        pattern = f"%{normalized}%"
-        conditions = []
-        if search.strip().isdigit():
-            conditions.append(Order.id == int(search.strip()))
-        use_unaccent = db.get_bind().dialect.name == "postgresql"
-        if use_unaccent:
-            conditions.append(
-                text(unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])).bindparams(
-                    search_pattern=pattern
-                )
-            )
-        else:
-            conditions.append(func.lower(Client.name).like(pattern))
-            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
-        q = q.join(Order.client).filter(or_(*conditions))
+    q = _apply_order_filters(
+        q,
+        db=db,
+        search=search,
+        status=fiscal_status,
+        scheduled_date=scheduled_date,
+    )
     q = q.order_by(Order.scheduled_date.desc(), Order.id.desc())
     orders = q.all()
     return [serialize_order_list_item(o) for o in orders]
@@ -241,31 +274,13 @@ def list_seller_orders(
         )
         .options(joinedload(Order.client))
     )
-    if scheduled_date:
-        q = q.filter(Order.scheduled_date == scheduled_date)
-    if status and status.strip():
-        try:
-            status_enum = OrderStatus(status.strip())
-            q = q.filter(Order.status == status_enum)
-        except ValueError:
-            pass
-    if search and search.strip():
-        normalized = normalize_search_string(search)
-        pattern = f"%{normalized}%"
-        conditions = []
-        if search.strip().isdigit():
-            conditions.append(Order.id == int(search.strip()))
-        use_unaccent = db.get_bind().dialect.name == "postgresql"
-        if use_unaccent:
-            conditions.append(
-                text(unaccent_like_sql([("clients", "name"), ("clients", "cpf_cnpj")])).bindparams(
-                    search_pattern=pattern
-                )
-            )
-        else:
-            conditions.append(func.lower(Client.name).like(pattern))
-            conditions.append(func.lower(Client.cpf_cnpj).like(pattern))
-        q = q.join(Order.client).filter(or_(*conditions))
+    q = _apply_order_filters(
+        q,
+        db=db,
+        search=search,
+        status=status,
+        scheduled_date=scheduled_date,
+    )
     q = q.order_by(Order.scheduled_date.desc(), Order.id.desc())
     return [serialize_order_list_item(o) for o in q.all()]
 
