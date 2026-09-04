@@ -69,6 +69,7 @@ class OrderResponse(BaseModel):
     priority: str
     status: str
     scheduled_date: date
+    client_id: int
     client: ClientRefSchema | None = None
     created_by_user_id: int | None = None
 
@@ -76,6 +77,11 @@ class OrderResponse(BaseModel):
     is_paid: bool
     total_amount: Decimal
 
+    # Todos os itens do pedido, em qualquer status. É o que as telas de
+    # detalhe (admin, vendedor, fiscal) devem consumir.
+    items: list[OrderItemResponse]
+
+    # Recorte para a tela do produtor, que trabalha um item por vez.
     produced_items: list[OrderItemResponse]
     current_item: OrderItemResponse | None
     total_items: int

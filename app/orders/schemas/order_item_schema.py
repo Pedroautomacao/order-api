@@ -26,6 +26,8 @@ class OrderItemConfirm(BaseModel):
 
 class OrderItemResponse(BaseModel):
     id: int
+    order_id: int
+    product_id: int
     quantity: float
     produced_quantity: float | None
     status: str

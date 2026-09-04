@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from app.clients.models.client import Client
 from app.clients.schemas.client_schema import ClientCreate, ClientUpdate
 from app.audit.services.audit_service import AuditService
-from app.core.services.base_atomic_service import BaseAtomicService
+from app.database.atomic import atomic
 from app.users.models import User
 
 
-class ClientService(BaseAtomicService):
+class ClientService:
     @staticmethod
     def create(
         db: Session,
@@ -27,19 +27,20 @@ class ClientService(BaseAtomicService):
             allow_credit=data.allow_credit,
             credit_limit=data.credit_limit,
         )
-        db.add(client)
-        db.commit()
+        with atomic(db):
+            db.add(client)
+            db.flush()  # precisa do id gerado para o log
+
+            AuditService.log(
+                db=db,
+                action="client:create",
+                entity="client",
+                entity_id=client.id,
+                user_id=current_user.id,
+                description=f"Client {client.name} created by {current_user.username}",
+            )
+
         db.refresh(client)
-
-        AuditService.log(
-            db=db,
-            action="client:create",
-            entity="client",
-            entity_id=client.id,
-            user_id=current_user.id,
-            description=f"Client {client.name} created by {current_user.username}",
-        )
-
         return client
 
     @staticmethod
@@ -50,21 +51,20 @@ class ClientService(BaseAtomicService):
         data: ClientUpdate,
         current_user: User,
     ) -> Client:
-        for field, value in data.model_dump(exclude_unset=True).items():
-            setattr(client, field, value)
+        with atomic(db):
+            for field, value in data.model_dump(exclude_unset=True).items():
+                setattr(client, field, value)
 
-        db.commit()
+            AuditService.log(
+                db=db,
+                action="client:update",
+                entity="client",
+                entity_id=client.id,
+                user_id=current_user.id,
+                description=f"Client {client.name} updated by {current_user.username}",
+            )
+
         db.refresh(client)
-
-        AuditService.log(
-            db=db,
-            action="client:update",
-            entity="client",
-            entity_id=client.id,
-            user_id=current_user.id,
-            description=f"Client {client.name} updated by {current_user.username}",
-        )
-
         return client
 
     @staticmethod
@@ -77,14 +77,14 @@ class ClientService(BaseAtomicService):
         if client.is_deleted:
             return
 
-        client.is_deleted = True
-        db.commit()
+        with atomic(db):
+            client.is_deleted = True
 
-        AuditService.log(
-            db=db,
-            action="client:delete",
-            entity="client",
-            entity_id=client.id,
-            user_id=current_user.id,
-            description=f"Client {client.name} soft deleted by {current_user.username}",
-        )
+            AuditService.log(
+                db=db,
+                action="client:delete",
+                entity="client",
+                entity_id=client.id,
+                user_id=current_user.id,
+                description=f"Client {client.name} soft deleted by {current_user.username}",
+            )

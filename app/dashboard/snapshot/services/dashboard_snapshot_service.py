@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from app.core.time import utcnow
+from app.database.atomic import atomic
 from app.dashboard.services.dashboard_overview_service import DashboardService
 from app.dashboard.services.dashboard_production_service import (
     DashboardProductionService,
@@ -62,8 +63,8 @@ class DashboardSnapshotService:
             payload=payload,
         )
 
-        db.add(snapshot)
-        db.commit()
-        db.refresh(snapshot)
+        with atomic(db):
+            db.add(snapshot)
 
+        db.refresh(snapshot)
         return snapshot

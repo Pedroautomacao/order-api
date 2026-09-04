@@ -37,7 +37,7 @@ class WorkOrder(Base, AuditMixin):
     )
 
     # 🔗 RELATIONSHIPS
-    order = relationship("Order", back_populates="work_order")
+    order = relationship("Order")
     user = relationship(
         "User",
         foreign_keys=[user_id],

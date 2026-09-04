@@ -9,7 +9,10 @@ from app.orders.models.work_order import WorkOrder
 from app.orders.models.work_item import WorkItem
 from app.orders.enums import OrderStatus
 from app.order_item_breaks.models import OrderItemBreak
-from app.dashboard.utils.date_range import resolve_date_range
+from app.dashboard.utils.date_range import (
+    resolve_date_range,
+    resolve_datetime_range,
+)
 
 
 class DashboardProducersService:
@@ -21,6 +24,9 @@ class DashboardProducersService:
         date_to: date | None = None,
     ):
         start_date, end_date = resolve_date_range(date_from, date_to)
+        # Colunas DateTime precisam do dia inteiro; com `date` os dois limites
+        # colapsam na meia-noite e o BETWEEN nao casa com nada.
+        start_dt, end_dt = resolve_datetime_range(date_from, date_to)
         days_range = max((end_date - start_date).days + 1, 1)
 
         producers = (
@@ -47,9 +53,10 @@ class DashboardProducersService:
                 db.query(func.count(WorkOrder.id))
                 .filter(
                     WorkOrder.user_id == user.id,
+                    WorkOrder.is_deleted.is_(False),
                     WorkOrder.time_to_produced_secs.isnot(None),
                     WorkOrder.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -59,9 +66,10 @@ class DashboardProducersService:
                 db.query(func.avg(WorkOrder.time_to_produced_secs))
                 .filter(
                     WorkOrder.user_id == user.id,
+                    WorkOrder.is_deleted.is_(False),
                     WorkOrder.time_to_produced_secs.isnot(None),
                     WorkOrder.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -72,8 +80,11 @@ class DashboardProducersService:
                 db.query(func.count(WorkItem.id))
                 .filter(
                     WorkItem.user_id == user.id,
+                    # apontamento de ciclo resetado nao conta como producao
+                    WorkItem.is_deleted.is_(False),
+                    WorkItem.ended_at.isnot(None),
                     WorkItem.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -83,9 +94,10 @@ class DashboardProducersService:
                 db.query(func.avg(WorkItem.time_to_produced_secs))
                 .filter(
                     WorkItem.user_id == user.id,
+                    WorkItem.is_deleted.is_(False),
                     WorkItem.time_to_produced_secs.isnot(None),
                     WorkItem.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -100,8 +112,9 @@ class DashboardProducersService:
                 )
                 .filter(
                     WorkItem.user_id == user.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -116,8 +129,9 @@ class DashboardProducersService:
                 )
                 .filter(
                     WorkItem.user_id == user.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()

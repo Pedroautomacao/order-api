@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.core.services.base_atomic_service import BaseAtomicService
+from app.database.atomic import atomic
 from app.products.exception_handler import UnitOfMeasureNotFoundException
 from app.products.models.product import Product
 from app.products.schemas.product_schema import ProductCreate, ProductUpdate
@@ -9,7 +9,7 @@ from app.units.models.unit_of_measure import UnitOfMeasure
 from app.users.models import User
 
 
-class ProductService(BaseAtomicService):
+class ProductService:
     @staticmethod
     def create(
         db: Session,
@@ -39,19 +39,20 @@ class ProductService(BaseAtomicService):
             unit_price=data.unit_price,
             unit_of_measure_id=unit.id,
         )
-        db.add(product)
-        db.commit()
+        with atomic(db):
+            db.add(product)
+            db.flush()  # precisa do id gerado para o log
+
+            AuditService.log(
+                db=db,
+                action="product:create",
+                entity="product",
+                entity_id=product.id,
+                user_id=current_user.id,
+                description=f"Product {product.name} created by {current_user.username}",
+            )
+
         db.refresh(product)
-
-        AuditService.log(
-            db=db,
-            action="product:create",
-            entity="product",
-            entity_id=product.id,
-            user_id=current_user.id,
-            description=f"Product {product.name} created by {current_user.username}",
-        )
-
         return product
 
     @staticmethod
@@ -83,24 +84,23 @@ class ProductService(BaseAtomicService):
 
             product.unit_of_measure_id = unit.id
 
-        for field, value in payload.items():
-            setattr(product, field, value)
+        with atomic(db):
+            for field, value in payload.items():
+                setattr(product, field, value)
 
-        db.commit()
+            AuditService.log(
+                db=db,
+                action="product:update",
+                entity="product",
+                entity_id=product.id,
+                user_id=current_user.id,
+                description=(
+                    f"Product {product.name} updated by "
+                    f"{current_user.username}"
+                ),
+            )
+
         db.refresh(product)
-
-        AuditService.log(
-            db=db,
-            action="product:update",
-            entity="product",
-            entity_id=product.id,
-            user_id=current_user.id,
-            description=(
-                f"Product {product.name} updated by "
-                f"{current_user.username}"
-            ),
-        )
-
         return product
 
     @staticmethod
@@ -113,14 +113,14 @@ class ProductService(BaseAtomicService):
         if product.is_deleted:
             return
 
-        product.is_deleted = True
-        db.commit()
+        with atomic(db):
+            product.is_deleted = True
 
-        AuditService.log(
-            db=db,
-            action="product:delete",
-            entity="product",
-            entity_id=product.id,
-            user_id=current_user.id,
-            description=f"Product {product.name} soft deleted by {current_user.username}",
-        )
+            AuditService.log(
+                db=db,
+                action="product:delete",
+                entity="product",
+                entity_id=product.id,
+                user_id=current_user.id,
+                description=f"Product {product.name} soft deleted by {current_user.username}",
+            )

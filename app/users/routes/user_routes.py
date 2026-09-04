@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.security import hash_password
 from app.core.utils.search import normalize_search_string, unaccent_like_sql
+from app.database.atomic import atomic
 from app.database.deps import get_db
 from app.users.models.user import User
 from app.users.models.role import Role
@@ -192,17 +193,18 @@ def create_menu_group(
         description=data.description.strip() if data.description else None,
     )
     group.permissions = permissions
-    db.add(group)
-    db.commit()
+    with atomic(db):
+        db.add(group)
+        db.flush()  # precisa do id gerado para o log
+        AuditService.log(
+            db=db,
+            action="menu_group:create",
+            entity="menu_group",
+            entity_id=group.id,
+            user_id=current_user.id,
+            description=f"Grupo de menu '{group.name}' (code={group.code}) criado por {current_user.username}",
+        )
     db.refresh(group)
-    AuditService.log(
-        db=db,
-        action="menu_group:create",
-        entity="menu_group",
-        entity_id=group.id,
-        user_id=current_user.id,
-        description=f"Grupo de menu '{group.name}' (code={group.code}) criado por {current_user.username}",
-    )
     return group
 
 
@@ -239,16 +241,17 @@ def update_menu_group(
                 detail="Uma ou mais permissões inválidas",
             )
         group.permissions = permissions
-    db.commit()
+    # as alterações acima ainda estão pendentes: o bloco grava dados e log juntos
+    with atomic(db):
+        AuditService.log(
+            db=db,
+            action="menu_group:update",
+            entity="menu_group",
+            entity_id=group.id,
+            user_id=current_user.id,
+            description=f"Grupo de menu '{group.name}' (id={group_id}) atualizado por {current_user.username}",
+        )
     db.refresh(group)
-    AuditService.log(
-        db=db,
-        action="menu_group:update",
-        entity="menu_group",
-        entity_id=group.id,
-        user_id=current_user.id,
-        description=f"Grupo de menu '{group.name}' (id={group_id}) atualizado por {current_user.username}",
-    )
     return group
 
 
@@ -274,16 +277,16 @@ def update_role(
     if data.menu_group_ids is not None:
         groups = db.query(MenuGroup).filter(MenuGroup.id.in_(data.menu_group_ids)).all()
         role.menu_groups = groups
-    db.commit()
-    db.refresh(role)
-    AuditService.log(
-        db=db,
-        action="role:update",
-        entity="role",
-        entity_id=role.id,
-        user_id=current_user.id,
-        description=f"Perfil '{role.name}' (id={role_id}) atualizado por {current_user.username}",
-    )
+    # as alterações acima ainda estão pendentes: o bloco grava dados e log juntos
+    with atomic(db):
+        AuditService.log(
+            db=db,
+            action="role:update",
+            entity="role",
+            entity_id=role.id,
+            user_id=current_user.id,
+            description=f"Perfil '{role.name}' (id={role_id}) atualizado por {current_user.username}",
+        )
     role = (
         db.query(Role)
         .options(

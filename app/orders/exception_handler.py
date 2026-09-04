@@ -38,20 +38,33 @@ class DuplicateOrderForClientException(DomainException):
 
 
 class NoOrderAvailableException(DomainException):
+    status_code = 404
+
     def __init__(self):
         super().__init__(
-            "No order available for this date"
+            "Não há pedidos aguardando produção para hoje."
         )
 
 
 class OrderNotFinishedException(DomainException):
     def __init__(self):
         super().__init__(
-            "Order not finished"
+            "Ainda há itens não produzidos neste pedido."
+        )
+
+
+class OrderNotInProductionException(DomainException):
+    """O pedido saiu de produção enquanto a tela do produtor seguia aberta."""
+
+    def __init__(self):
+        super().__init__(
+            "Este pedido não está mais em produção. Recarregue a tela."
         )
 
 
 class OrderNotFoundException(DomainException):
+    status_code = 404
+
     def __init__(self, order_id: int):
         super().__init__(f"Order {order_id} not found")
 
@@ -66,11 +79,13 @@ class NoItemInProductionException(DomainException):
 class InvalidProducedQuantityException(DomainException):
     def __init__(self):
         super().__init__(
-            "Invalid product quantity"
+            "Informe uma quantidade produzida maior que zero."
         )
 
 
 class OrderItemNotFoundException(DomainException):
+    status_code = 404
+
     def __init__(self, item_id: int):
         super().__init__(f"Order item {item_id} not found")
 
@@ -78,17 +93,24 @@ class OrderItemNotFoundException(DomainException):
 class InvalidOrderItemStateException(DomainException):
     def __init__(self, item_id: int, expected: str, current: str):
         super().__init__(
-            f"Order item {item_id} invalid state. "
-            f"Expected {expected}, got {current}"
+            "Este item já foi atualizado por outra tela. "
+            "Recarregue para ver a situação atual."
         )
+        self.item_id = item_id
+        self.expected = expected
+        self.current = current
 
 
 class OrderNotAssignedToUserException(DomainException):
+    status_code = 404
+
     def __init__(self):
-        super().__init__("Order is not assigned to current user")
+        super().__init__("Este pedido não está mais atribuído a você.")
 
 
 class WorkItemNotFoundException(DomainException):
+    status_code = 404
+
     def __init__(self):
         super().__init__("Open work item not found")
 

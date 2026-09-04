@@ -83,12 +83,6 @@ class Order(Base, AuditMixin):
         cascade="all, delete-orphan",
     )
 
-    work_order = relationship(
-        "WorkOrder",
-        back_populates="order",
-        uselist=False,
-    )
-
     scheduled_date: Mapped[date] = mapped_column(
         Date,
         nullable=False,

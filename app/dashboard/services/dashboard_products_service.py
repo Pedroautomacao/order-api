@@ -5,10 +5,14 @@ from sqlalchemy import func, distinct
 
 from app.order_item_breaks.models import OrderItemBreak
 from app.products.models.product import Product
+from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
 from app.orders.models.work_item import WorkItem
-from app.dashboard.utils.date_range import resolve_date_range
+from app.dashboard.utils.date_range import (
+    resolve_date_range,
+    resolve_datetime_range,
+)
 
 
 class DashboardProductsService:
@@ -20,6 +24,9 @@ class DashboardProductsService:
         date_to: date | None = None,
     ):
         start_date, end_date = resolve_date_range(date_from, date_to)
+        # Colunas DateTime precisam do dia inteiro; com `date` os dois limites
+        # colapsam na meia-noite e o BETWEEN nao casa com nada.
+        start_dt, end_dt = resolve_datetime_range(date_from, date_to)
 
         products = (
             db.query(Product)
@@ -46,11 +53,16 @@ class DashboardProductsService:
                 .scalar()
             )
 
-            # Quantidade produzida
+            # Quantidade produzida — as demais métricas do painel respeitam o
+            # período; esta somava a base inteira, cancelados inclusive.
             total_produced_quantity = (
                 db.query(func.sum(OrderItem.produced_quantity))
+                .join(Order, Order.id == OrderItem.order_id)
                 .filter(
                     OrderItem.product_id == product.id,
+                    Order.scheduled_date.between(start_date, end_date),
+                    Order.is_deleted.is_(False),
+                    Order.status != OrderStatus.CANCELED,
                 )
                 .scalar()
                 or 0
@@ -65,8 +77,9 @@ class DashboardProductsService:
                 )
                 .filter(
                     OrderItem.product_id == product.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -81,8 +94,9 @@ class DashboardProductsService:
                 )
                 .filter(
                     OrderItem.product_id == product.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -100,8 +114,9 @@ class DashboardProductsService:
                 db.query(func.count(WorkItem.id))
                 .filter(
                     WorkItem.product_id == product.id,
+                    WorkItem.is_deleted.is_(False),
                     WorkItem.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -111,9 +126,10 @@ class DashboardProductsService:
                 db.query(func.avg(WorkItem.time_to_produced_secs))
                 .filter(
                     WorkItem.product_id == product.id,
+                    WorkItem.is_deleted.is_(False),
                     WorkItem.time_to_produced_secs.isnot(None),
                     WorkItem.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -124,6 +140,9 @@ class DashboardProductsService:
                 db.query(func.count(WorkItem.id))
                 .filter(
                     WorkItem.product_id == product.id,
+                    # o reset zera ended_at dos apontamentos que anula; sem
+                    # este filtro o produto fica 'em produção' para sempre
+                    WorkItem.is_deleted.is_(False),
                     WorkItem.ended_at.is_(None),
                 )
                 .scalar()

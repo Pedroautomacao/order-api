@@ -4,11 +4,11 @@ from fastapi import HTTPException, status
 from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
 from app.audit.services.audit_service import AuditService
-from app.core.services.base_atomic_service import BaseAtomicService
+from app.database.atomic import atomic
 from app.users.models import User
 
 
-class BillingService(BaseAtomicService):
+class BillingService:
     @staticmethod
     def bill(
         db: Session,
@@ -22,18 +22,17 @@ class BillingService(BaseAtomicService):
                 detail="Only produced orders can be billed",
             )
 
-        order.status = OrderStatus.BILLED
+        with atomic(db):
+            order.status = OrderStatus.BILLED
 
-        db.commit()
+            AuditService.log(
+                db=db,
+                action="order:bill",
+                entity="order",
+                entity_id=order.id,
+                user_id=current_user.id,
+                description=f"Order {order.id} billed by {current_user.username}",
+            )
+
         db.refresh(order)
-
-        AuditService.log(
-            db=db,
-            action="order:bill",
-            entity="order",
-            entity_id=order.id,
-            user_id=current_user.id,
-            description=f"Order {order.id} billed by {current_user.username}",
-        )
-
         return order

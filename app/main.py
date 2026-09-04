@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import DomainException
 from app.core.scheduler import start_scheduler
 from app.database.deps import get_db
 from app.database.imports import * # noqa
@@ -44,6 +46,20 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+
+@app.exception_handler(DomainException)
+async def domain_exception_handler(request: Request, exc: DomainException):
+    """Traduz erro de regra de negócio para HTTP.
+
+    Sem isto qualquer DomainException que a rota não capturasse virava 500 —
+    era o caso de finalizar um pedido com item pendente, por exemplo. O corpo
+    usa a mesma chave ``detail`` do HTTPException, que o front já lê.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
 
 
 @app.get("/health")

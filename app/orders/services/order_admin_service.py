@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.audit.services.audit_service import AuditService
+from app.database.atomic import atomic
 from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
 
@@ -21,18 +22,19 @@ class OrderAdminService:
         if order.priority == "A":
             return order  # já priorizado
 
-        order.priority = "A"
-        db.commit()
-        db.refresh(order)
+        with atomic(db):
+            order.priority = "A"
 
-        AuditService.log(
-            db=db,
-            action="order:set_priority",
-            entity="order",
-            entity_id=order.id,
-            user_id=current_user.id,
-            description=f"Order {order.id} priorizado (A) por {current_user.username}",
-        )
+            AuditService.log(
+                db=db,
+                action="order:set_priority",
+                entity="order",
+                entity_id=order.id,
+                user_id=current_user.id,
+                description=f"Order {order.id} priorizado (A) por {current_user.username}",
+            )
+
+        db.refresh(order)
         return order
 
     @staticmethod
@@ -49,16 +51,18 @@ class OrderAdminService:
             )
 
         old = order.scheduled_date
-        order.scheduled_date = new_date
-        db.commit()
-        db.refresh(order)
 
-        AuditService.log(
-            db=db,
-            action="order:reschedule",
-            entity="order",
-            entity_id=order.id,
-            user_id=current_user.id,
-            description=f"Order {order.id} remarcado de {old} para {new_date} por {current_user.username}",
-        )
+        with atomic(db):
+            order.scheduled_date = new_date
+
+            AuditService.log(
+                db=db,
+                action="order:reschedule",
+                entity="order",
+                entity_id=order.id,
+                user_id=current_user.id,
+                description=f"Order {order.id} remarcado de {old} para {new_date} por {current_user.username}",
+            )
+
+        db.refresh(order)
         return order

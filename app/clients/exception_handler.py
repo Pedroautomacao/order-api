@@ -2,6 +2,8 @@ from app.core.exceptions import DomainException
 
 
 class ClientNotFoundException(DomainException):
+    status_code = 404
+
     def __init__(self, client_id: int | None = None):
         message = (
             f"Client not found (id={client_id})"

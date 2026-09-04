@@ -40,9 +40,15 @@ class DashboardService:
         total_orders = sum(orders_by_status.values())
         produced_orders = orders_by_status[OrderStatus.PRODUCED]
 
+        # Billed ja passou por Produced: sem soma-lo a taxa de conclusao cai
+        # conforme o fiscal fatura. Cancelado sai da base, nao e trabalho
+        # pendente.
+        concluded_orders = produced_orders + orders_by_status[OrderStatus.BILLED]
+        considered_orders = total_orders - orders_by_status[OrderStatus.CANCELED]
+
         completion_rate = (
-            (produced_orders / total_orders) * 100
-            if total_orders > 0
+            (concluded_orders / considered_orders) * 100
+            if considered_orders > 0
             else 0
         )
 
@@ -52,8 +58,14 @@ class DashboardService:
             db.query(func.count(Order.id))
             .filter(
                 Order.scheduled_date < start_date,
+                # sem CANCELED aqui, pedido cancelado conta como atrasado
+                # para sempre
                 Order.status.notin_(
-                    [OrderStatus.PRODUCED, OrderStatus.BILLED]
+                    [
+                        OrderStatus.PRODUCED,
+                        OrderStatus.BILLED,
+                        OrderStatus.CANCELED,
+                    ]
                 ),
                 Order.is_deleted.is_(False),
             )

@@ -12,7 +12,7 @@ from decimal import Decimal
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
-from app.orders.enums import OrderStatus, PaymentMethod
+from app.orders.enums import OrderItemStatus, OrderStatus, PaymentMethod
 from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
 from app.order_item_breaks.models.order_Item_break import OrderItemBreak
@@ -126,7 +126,11 @@ def _break_rate(db, start: date, end: date, client_id: int | None):
     breaks_q = (
         db.query(func.count(OrderItemBreak.id))
         .join(Order, Order.id == OrderItemBreak.order_id)
-        .filter(Order.scheduled_date.between(start, end), Order.is_deleted.is_(False))
+        .filter(
+            Order.scheduled_date.between(start, end),
+            Order.is_deleted.is_(False),
+            OrderItemBreak.is_deleted.is_(False),
+        )
     )
     produced_items_q = (
         db.query(func.count(OrderItem.id))
@@ -134,7 +138,9 @@ def _break_rate(db, start: date, end: date, client_id: int | None):
         .filter(
             Order.scheduled_date.between(start, end),
             Order.is_deleted.is_(False),
-            OrderItem.produced_quantity.isnot(None),
+            # o status e a fonte de verdade: o reset grava produced_quantity = 0
+            # (nao NULL), entao o item voltava a contar como produzido
+            OrderItem.status == OrderItemStatus.PRODUCED,
         )
     )
     if client_id:

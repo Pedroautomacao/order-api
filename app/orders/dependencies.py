@@ -1,8 +1,20 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.orders.models.order import Order
 from app.orders.exception_handler import OrderNotFoundException, OrderItemNotFoundException
 from app.orders.models.order_item import OrderItem
+from app.products.models.product import Product
+
+
+def with_detail_relations(query):
+    """Carrega a cadeia que serialize_order percorre (itens -> produto ->
+    unidade). Sem isso cada item vira duas queries extras."""
+    return query.options(
+        selectinload(Order.client),
+        selectinload(Order.items)
+        .selectinload(OrderItem.product)
+        .selectinload(Product.unit_of_measure),
+    )
 
 
 def get_order_or_404(
@@ -10,7 +22,7 @@ def get_order_or_404(
     order_id: int,
 ) -> Order:
     order = (
-        db.query(Order)
+        with_detail_relations(db.query(Order))
         .filter(
             Order.id == order_id,
             Order.is_deleted.is_(False),

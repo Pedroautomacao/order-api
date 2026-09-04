@@ -6,10 +6,9 @@ from sqlalchemy import distinct
 from sqlalchemy.orm import Session, selectinload
 
 from app.audit.models.audit_log import AuditLog
-from app.core.services.base_atomic_service import BaseAtomicService
 
 
-class AuditService(BaseAtomicService):
+class AuditService:
     @staticmethod
     def list(
         db: Session,
@@ -79,12 +78,18 @@ class AuditService(BaseAtomicService):
         user_id: int | None,
         description: str | None = None,
     ) -> None:
-        log = AuditLog(
-            action=action,
-            entity=entity,
-            entity_id=entity_id,
-            user_id=user_id,
-            description=description,
+        """Registra a ação na transação corrente.
+
+        Não faz commit de propósito: o log entra na mesma unidade de trabalho
+        da operação que ele descreve, então ou os dois persistem ou nenhum
+        persiste. Quem chama delimita a transação com ``atomic(db)``.
+        """
+        db.add(
+            AuditLog(
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                user_id=user_id,
+                description=description,
+            )
         )
-        db.add(log)
-        db.commit()

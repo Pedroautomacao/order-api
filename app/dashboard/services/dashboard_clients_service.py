@@ -8,7 +8,10 @@ from app.order_item_breaks.models import OrderItemBreak
 from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
 from app.orders.models.work_order import WorkOrder
-from app.dashboard.utils.date_range import resolve_date_range
+from app.dashboard.utils.date_range import (
+    resolve_date_range,
+    resolve_datetime_range,
+)
 
 
 class DashboardClientsService:
@@ -20,6 +23,9 @@ class DashboardClientsService:
         date_to: date | None = None,
     ):
         start_date, end_date = resolve_date_range(date_from, date_to)
+        # Colunas DateTime precisam do dia inteiro; com `date` os dois limites
+        # colapsam na meia-noite e o BETWEEN nao casa com nada.
+        start_dt, end_dt = resolve_datetime_range(date_from, date_to)
 
         clients = (
             db.query(Client)
@@ -47,6 +53,7 @@ class DashboardClientsService:
                     Order.client_id == client.id,
                     Order.status == OrderStatus.PRODUCED,
                     Order.scheduled_date.between(start_date, end_date),
+                    Order.is_deleted.is_(False),
                 )
                 .scalar()
             )
@@ -57,6 +64,7 @@ class DashboardClientsService:
                     Order.client_id == client.id,
                     Order.status == OrderStatus.BILLED,
                     Order.scheduled_date.between(start_date, end_date),
+                    Order.is_deleted.is_(False),
                 )
                 .scalar()
             )
@@ -67,6 +75,7 @@ class DashboardClientsService:
                     Order.client_id == client.id,
                     Order.status == OrderStatus.CANCELED,
                     Order.scheduled_date.between(start_date, end_date),
+                    Order.is_deleted.is_(False),
                 )
                 .scalar()
             )
@@ -80,9 +89,14 @@ class DashboardClientsService:
                 .scalar()
             )
 
+            # Faturar um pedido nao pode derrubar a taxa de conclusao do
+            # cliente, e pedido cancelado nao entra na base.
+            concluded_orders = produced_orders + billed_orders
+            considered_orders = total_orders - canceled_orders
+
             completion_rate = (
-                (produced_orders / total_orders) * 100
-                if total_orders > 0
+                (concluded_orders / considered_orders) * 100
+                if considered_orders > 0
                 else 0
             )
 
@@ -95,8 +109,9 @@ class DashboardClientsService:
                 )
                 .filter(
                     Order.client_id == client.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -111,8 +126,9 @@ class DashboardClientsService:
                 )
                 .filter(
                     Order.client_id == client.id,
+                    OrderItemBreak.is_deleted.is_(False),
                     OrderItemBreak.created_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()
@@ -133,8 +149,9 @@ class DashboardClientsService:
                 )
                 .filter(
                     Order.client_id == client.id,
+                    WorkOrder.is_deleted.is_(False),
                     WorkOrder.started_at.between(
-                        start_date, end_date
+                        start_dt, end_dt
                     ),
                 )
                 .scalar()

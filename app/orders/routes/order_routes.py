@@ -8,7 +8,7 @@ from app.clients.exception_handler import ClientNotFoundException
 from app.clients.models.client import Client
 from app.core.utils.search import normalize_search_string, unaccent_like_sql
 from app.database.deps import get_db
-from app.orders.dependencies import get_order_or_404
+from app.orders.dependencies import get_order_or_404, with_detail_relations
 from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
     DuplicateOrderForClientException, NoOrderAvailableException, CreditLimitExceededException, \
     PaymentMethodNotAllowedException
@@ -23,6 +23,8 @@ class RescheduleRequest(BaseModel):
     class Config:
         populate_by_name = True
 from app.orders.models.order import Order
+from app.orders.models.order_item import OrderItem
+from app.products.models.product import Product
 from app.orders.enums import OrderStatus
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.orders.serializers.order_serializer import serialize_order, serialize_order_list_item
@@ -173,8 +175,9 @@ def get_producer_current_order(
         )
         .options(
             _jl(Order.client),
-            _jl(Order.items),
+            _jl(Order.items).joinedload(OrderItem.product).joinedload(Product.unit_of_measure),
         )
+        .order_by(Order.id.asc())
         .first()
     )
     if not order:
@@ -439,7 +442,7 @@ def reset_order(
     current_user=Depends(get_current_user),
 ):
     order = (
-        db.query(Order)
+        with_detail_relations(db.query(Order))
         .filter(
             Order.id == order_id,
             Order.is_deleted.is_(False),
@@ -471,7 +474,7 @@ def cancel_order(
     current_user=Depends(get_current_user),
 ):
     order = (
-        db.query(Order)
+        with_detail_relations(db.query(Order))
         .filter(
             Order.id == order_id,
             Order.is_deleted.is_(False),

@@ -7,7 +7,10 @@ from app.orders.enums import OrderStatus
 from app.orders.models.work_order import WorkOrder
 from app.orders.models.work_item import WorkItem
 from app.orders.models.order import Order
-from app.dashboard.utils.date_range import resolve_date_range
+from app.dashboard.utils.date_range import (
+    resolve_date_range,
+    resolve_datetime_range,
+)
 
 
 class DashboardProductionService:
@@ -19,11 +22,15 @@ class DashboardProductionService:
         date_to: date | None = None,
     ):
         start_date, end_date = resolve_date_range(date_from, date_to)
+        # Colunas DateTime precisam do dia inteiro; com `date` os dois limites
+        # colapsam na meia-noite e o BETWEEN nao casa com nada.
+        start_dt, end_dt = resolve_datetime_range(date_from, date_to)
 
         avg_order_time = (
             db.query(func.avg(WorkOrder.time_to_produced_secs))
             .filter(
-                WorkOrder.started_at.between(start_date, end_date),
+                WorkOrder.is_deleted.is_(False),
+                WorkOrder.started_at.between(start_dt, end_dt),
                 WorkOrder.time_to_produced_secs.isnot(None),
             )
             .scalar()
@@ -33,7 +40,8 @@ class DashboardProductionService:
         avg_item_time = (
             db.query(func.avg(WorkItem.time_to_produced_secs))
             .filter(
-                WorkItem.started_at.between(start_date, end_date),
+                WorkItem.is_deleted.is_(False),
+                WorkItem.started_at.between(start_dt, end_dt),
                 WorkItem.time_to_produced_secs.isnot(None),
             )
             .scalar()
@@ -53,7 +61,8 @@ class DashboardProductionService:
                 func.avg(WorkOrder.time_to_produced_secs),
             )
             .filter(
-                WorkOrder.started_at.between(start_date, end_date),
+                WorkOrder.is_deleted.is_(False),
+                WorkOrder.started_at.between(start_dt, end_dt),
                 WorkOrder.time_to_produced_secs.isnot(None),
             )
             .group_by(WorkOrder.user_id)

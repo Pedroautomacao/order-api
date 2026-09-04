@@ -28,7 +28,10 @@ class DashboardUsersService:
                 func.count(WorkOrder.id),
                 func.avg(WorkOrder.time_to_produced_secs),
             )
-            .filter(WorkOrder.time_to_produced_secs.isnot(None))
+            .filter(
+                WorkOrder.is_deleted.is_(False),
+                WorkOrder.time_to_produced_secs.isnot(None),
+            )
             .group_by(WorkOrder.user_id)
             .all()
         )

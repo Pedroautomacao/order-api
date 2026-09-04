@@ -1,29 +1,25 @@
 from sqlalchemy.orm import Session
 
 from app.orders.models.work_item import WorkItem
-from app.orders.exception_handler import WorkItemNotFoundException
 
 
-def get_open_work_item(
+def find_open_work_item(
     db: Session,
     *,
-    order_id: int,
-    product_id: int,
-    user_id: int,
-) -> WorkItem:
-    work_item = (
+    order_item_id: int,
+) -> WorkItem | None:
+    """Apontamento aberto mais recente do item, ou None.
+
+    Identifica pelo próprio ``order_item_id``, que sempre existe — casar por
+    produto + usuário confundia itens do mesmo produto no mesmo pedido.
+    """
+    return (
         db.query(WorkItem)
         .filter(
-            WorkItem.order_id == order_id,
-            WorkItem.product_id == product_id,
-            WorkItem.user_id == user_id,
+            WorkItem.order_item_id == order_item_id,
             WorkItem.ended_at.is_(None),
             WorkItem.is_deleted.is_(False),
         )
+        .order_by(WorkItem.started_at.desc())
         .first()
     )
-
-    if not work_item:
-        raise WorkItemNotFoundException()
-
-    return work_item

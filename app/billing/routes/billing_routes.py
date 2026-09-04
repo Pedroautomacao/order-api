@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.deps import get_db
+from app.orders.dependencies import with_detail_relations
 from app.users.dependencies.auth_dependencies import get_current_user
 from app.users.dependencies.permission_dependencies import require_permission
 
 from app.orders.models.order import Order
 from app.orders.schemas.order_schema import OrderResponse
+from app.orders.serializers.order_serializer import serialize_order
 from app.billing.services.billing_service import BillingService
 
 router = APIRouter()
@@ -23,7 +25,7 @@ def bill_order(
     current_user=Depends(get_current_user),
 ):
     order = (
-        db.query(Order)
+        with_detail_relations(db.query(Order))
         .filter(
             Order.id == order_id,
             Order.is_deleted.is_(False),
@@ -37,8 +39,10 @@ def bill_order(
             detail="Order not found",
         )
 
-    return BillingService.bill(
-        db=db,
-        order=order,
-        current_user=current_user,
+    return serialize_order(
+        BillingService.bill(
+            db=db,
+            order=order,
+            current_user=current_user,
+        )
     )

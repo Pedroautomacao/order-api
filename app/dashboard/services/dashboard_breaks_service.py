@@ -5,7 +5,10 @@ from sqlalchemy import func
 
 from app.order_item_breaks.models import OrderItemBreak
 from app.orders.models.order_item import OrderItem
-from app.dashboard.utils.date_range import resolve_date_range
+from app.dashboard.utils.date_range import (
+    resolve_date_range,
+    resolve_datetime_range,
+)
 
 
 class DashboardBreaksService:
@@ -17,11 +20,14 @@ class DashboardBreaksService:
         date_to: date | None = None,
     ):
         start_date, end_date = resolve_date_range(date_from, date_to)
+        # Colunas DateTime precisam do dia inteiro; com `date` os dois limites
+        # colapsam na meia-noite e o BETWEEN nao casa com nada.
+        start_dt, end_dt = resolve_datetime_range(date_from, date_to)
 
         total_lost = (
             db.query(func.sum(OrderItemBreak.difference_quantity))
             .filter(
-                OrderItemBreak.created_at.between(start_date, end_date),
+                OrderItemBreak.created_at.between(start_dt, end_dt),
                 OrderItemBreak.is_deleted.is_(False),
             )
             .scalar()
@@ -31,7 +37,7 @@ class DashboardBreaksService:
         total_expected = (
             db.query(func.sum(OrderItemBreak.expected_quantity))
             .filter(
-                OrderItemBreak.created_at.between(start_date, end_date),
+                OrderItemBreak.created_at.between(start_dt, end_dt),
                 OrderItemBreak.is_deleted.is_(False),
             )
             .scalar()
@@ -54,7 +60,7 @@ class DashboardBreaksService:
                 OrderItem.id == OrderItemBreak.order_item_id,
             )
             .filter(
-                OrderItemBreak.created_at.between(start_date, end_date),
+                OrderItemBreak.created_at.between(start_dt, end_dt),
                 OrderItemBreak.is_deleted.is_(False),
             )
             .group_by(OrderItem.product_id)

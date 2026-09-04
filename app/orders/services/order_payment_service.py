@@ -2,13 +2,13 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.audit.services.audit_service import AuditService
-from app.core.services.base_atomic_service import BaseAtomicService
+from app.database.atomic import atomic
 from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
 from app.users.models.user import User
 
 
-class OrderPaymentService(BaseAtomicService):
+class OrderPaymentService:
     @staticmethod
     def mark_paid(
         db: Session,
@@ -24,17 +24,17 @@ class OrderPaymentService(BaseAtomicService):
         if order.is_paid:
             return order
 
-        order.is_paid = True
+        with atomic(db):
+            order.is_paid = True
 
-        AuditService.log(
-            db=db,
-            action="order:mark_paid",
-            entity="order",
-            entity_id=order.id,
-            user_id=current_user.id,
-            description=f"Order {order.id} marked as paid by {current_user.username}",
-        )
+            AuditService.log(
+                db=db,
+                action="order:mark_paid",
+                entity="order",
+                entity_id=order.id,
+                user_id=current_user.id,
+                description=f"Order {order.id} marked as paid by {current_user.username}",
+            )
 
-        db.commit()
         db.refresh(order)
         return order

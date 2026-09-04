@@ -5,6 +5,7 @@ from app.auth.models.refresh_token import RefreshToken
 from app.core.security import generate_refresh_token, hash_refresh_token
 from app.core.config import settings
 from app.core.time import utcnow
+from app.database.atomic import atomic
 
 
 class RefreshTokenService:
@@ -19,8 +20,8 @@ class RefreshTokenService:
             expires_at=utcnow() + timedelta(hours=9),
         )
 
-        db.add(refresh_token)
-        db.commit()
+        with atomic(db):
+            db.add(refresh_token)
 
         return raw_token
 
@@ -42,8 +43,12 @@ class RefreshTokenService:
 
     @staticmethod
     def revoke_all_for_user(db: Session, user_id: int) -> None:
+        """Revoga os tokens do usuário na transação corrente (sem commit).
+
+        É sempre chamado no meio de uma troca de senha, então quem delimita a
+        operação é que faz o commit.
+        """
         db.query(RefreshToken).filter(
             RefreshToken.user_id == user_id,
             RefreshToken.is_revoked.is_(False),
         ).update({"is_revoked": True})
-        db.commit()

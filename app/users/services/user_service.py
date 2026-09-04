@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.auth.services.refresh_token_service import RefreshTokenService
-from app.core.services.base_atomic_service import BaseAtomicService
+from app.database.atomic import atomic
 from app.users.models.user import User
 from app.users.models.role import Role
 from app.users.models.menu_group import MenuGroup
@@ -11,7 +11,7 @@ from app.core.security import hash_password, verify_password
 from app.audit.services.audit_service import AuditService
 
 
-class UserService(BaseAtomicService):
+class UserService:
     @staticmethod
     def create(
         db: Session,
@@ -48,18 +48,25 @@ class UserService(BaseAtomicService):
             password_hash=hash_password(data.password),
             is_active=data.is_active,
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        with atomic(db):
+            db.add(user)
+            db.flush()  # precisa do id gerado para vincular perfis e logar
 
-        if getattr(data, "role_ids", None):
-            roles = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
-            user.roles = roles
-            db.commit()
-            db.refresh(user)
+            if getattr(data, "role_ids", None):
+                roles = db.query(Role).filter(Role.id.in_(data.role_ids)).all()
+                user.roles = roles
+
+            AuditService.log(
+                db=db,
+                action="user:create",
+                entity="user",
+                entity_id=user.id,
+                user_id=current_user.id,
+                description=f"User {user.username} created by {current_user.username}",
+            )
 
         # Load relationships
-        user = (
+        return (
             db.query(User)
             .options(
                 selectinload(User.roles).selectinload(Role.permissions),
@@ -68,17 +75,6 @@ class UserService(BaseAtomicService):
             .filter(User.id == user.id)
             .first()
         )
-
-        AuditService.log(
-            db=db,
-            action="user:create",
-            entity="user",
-            entity_id=user.id,
-            user_id=current_user.id,
-            description=f"User {user.username} created by {current_user.username}",
-        )
-
-        return user
 
     @staticmethod
     def update(
@@ -105,21 +101,28 @@ class UserService(BaseAtomicService):
                     detail="Este e-mail já está em uso.",
                 )
 
-        for field, value in dump.items():
-            setattr(user, field, value)
+        with atomic(db):
+            for field, value in dump.items():
+                setattr(user, field, value)
 
-        if password is not None:
-            user.password_hash = hash_password(password)
+            if password is not None:
+                user.password_hash = hash_password(password)
 
-        if role_ids is not None:
-            roles = db.query(Role).filter(Role.id.in_(role_ids)).all()
-            user.roles = roles
+            if role_ids is not None:
+                roles = db.query(Role).filter(Role.id.in_(role_ids)).all()
+                user.roles = roles
 
-        db.commit()
-        db.refresh(user)
+            AuditService.log(
+                db=db,
+                action="user:update",
+                entity="user",
+                entity_id=user.id,
+                user_id=current_user.id,
+                description=f"User {user.username} updated by {current_user.username}",
+            )
 
         # Load relationships
-        user = (
+        return (
             db.query(User)
             .options(
                 selectinload(User.roles).selectinload(Role.permissions),
@@ -128,17 +131,6 @@ class UserService(BaseAtomicService):
             .filter(User.id == user.id)
             .first()
         )
-
-        AuditService.log(
-            db=db,
-            action="user:update",
-            entity="user",
-            entity_id=user.id,
-            user_id=current_user.id,
-            description=f"User {user.username} updated by {current_user.username}",
-        )
-
-        return user
 
     @staticmethod
     def delete(
@@ -150,17 +142,17 @@ class UserService(BaseAtomicService):
         if user.is_deleted:
             return
 
-        user.is_deleted = True
-        db.commit()
+        with atomic(db):
+            user.is_deleted = True
 
-        AuditService.log(
-            db=db,
-            action="user:delete",
-            entity="user",
-            entity_id=user.id,
-            user_id=current_user.id,
-            description=f"User {user.username} soft deleted by {current_user.username} ",
-        )
+            AuditService.log(
+                db=db,
+                action="user:delete",
+                entity="user",
+                entity_id=user.id,
+                user_id=current_user.id,
+                description=f"User {user.username} soft deleted by {current_user.username} ",
+            )
 
     @staticmethod
     def reset_password(
@@ -170,23 +162,23 @@ class UserService(BaseAtomicService):
             new_password: str,
             admin_user: User,
     ) -> None:
-        user.password_hash = hash_password(new_password)
-        db.commit()
+        with atomic(db):
+            user.password_hash = hash_password(new_password)
 
-        # revoke all refresh tokens
-        RefreshTokenService.revoke_all_for_user(db, user.id)
+            # revoke all refresh tokens
+            RefreshTokenService.revoke_all_for_user(db, user.id)
 
-        AuditService.log(
-            db=db,
-            action="user:reset_password",
-            entity="user",
-            entity_id=user.id,
-            user_id=admin_user.id,
-            description=(
-                f"Password reset for user '{user.username}' "
-                f"by admin '{admin_user.username}'"
-            ),
-        )
+            AuditService.log(
+                db=db,
+                action="user:reset_password",
+                entity="user",
+                entity_id=user.id,
+                user_id=admin_user.id,
+                description=(
+                    f"Password reset for user '{user.username}' "
+                    f"by admin '{admin_user.username}'"
+                ),
+            )
 
     @staticmethod
     def change_own_password(
@@ -208,17 +200,17 @@ class UserService(BaseAtomicService):
                 detail="A nova senha deve ser diferente da atual.",
             )
 
-        user.password_hash = hash_password(new_password)
-        db.commit()
+        with atomic(db):
+            user.password_hash = hash_password(new_password)
 
-        # revoga tokens antigos por segurança
-        RefreshTokenService.revoke_all_for_user(db, user.id)
+            # revoga tokens antigos por segurança
+            RefreshTokenService.revoke_all_for_user(db, user.id)
 
-        AuditService.log(
-            db=db,
-            action="user:change_password",
-            entity="user",
-            entity_id=user.id,
-            user_id=user.id,
-            description=f"User '{user.username}' changed own password",
-        )
+            AuditService.log(
+                db=db,
+                action="user:change_password",
+                entity="user",
+                entity_id=user.id,
+                user_id=user.id,
+                description=f"User '{user.username}' changed own password",
+            )
