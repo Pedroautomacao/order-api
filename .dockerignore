@@ -1,0 +1,26 @@
+# Controle de versão e configuração de IDE: não fazem parte do runtime.
+.git
+.gitignore
+.idea
+.claude
+
+# Segredos. O .env é injetado em runtime pelo `env_file` do docker-compose,
+# nunca copiado para dentro da imagem.
+.env
+.env.*
+
+# Virtualenv local (Windows): pesado e inútil dentro do container Linux.
+.venv
+
+# Bytecode local — os .pyc do repositório são de outro interpretador (3.10).
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+
+# Docs e arquivos de infra que a aplicação não lê em runtime.
+README.md
+TODO.md
+PERMISSIONS.md
+Dockerfile
+docker-compose*.yml

@@ -1,26 +1,22 @@
-version: "3.9"
-
+# Produção. O PostgreSQL NÃO faz parte deste compose: na VPS ele já existe como
+# container `postgres-central` na rede proxy_net, e é por esse hostname que o
+# DATABASE_URL do .env aponta.
 services:
   api:
     build: .
     container_name: order_api
     restart: always
-    command: >
-      uvicorn app.main:app
-      --host 0.0.0.0
-      --port 8000
-    ports:
-      - "8000:8000"
     env_file:
       - .env
-    volumes:
-      - .:/app
+    # `expose` em vez de `ports`: a 8000 fica visível apenas dentro da
+    # proxy_net, para o Nginx Proxy Manager. Nada é publicado no host.
+    expose:
+      - "8000"
     networks:
-      - order_net
+      - proxy_net
 
-
-volumes:
-  postgres_data:
-
+# Rede criada fora deste projeto (junto do Nginx Proxy Manager e do
+# postgres-central). Precisa existir antes do `up`.
 networks:
-  order_net:
+  proxy_net:
+    external: true

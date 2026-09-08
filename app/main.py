@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import DomainException
 from app.core.scheduler import start_scheduler
 from app.database.deps import get_db
@@ -30,17 +31,16 @@ from app.dashboard.routes.dashboard_products_routes import router as dashboard_p
 from app.dashboard.routes.dashboard_producers_routes import router as dashboard_producers_router
 from app.analytics.routes import router as analytics_router
 
-app = FastAPI(title="Order API")
+# root_path: quando o proxy reverso serve a API sob um subcaminho (ex.: /api),
+# é o que faz /docs e /openapi.json montarem as URLs corretas. As rotas em si
+# continuam sem prefixo aqui — quem tira o /api é o proxy.
+app = FastAPI(title="Order API", root_path=settings.root_path)
 
 # Configuração de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    # Configurável por CORS_ORIGINS; o default são as portas do dev server.
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
