@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/",
+    "",
     response_model=ProductResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("product:create"))],
@@ -43,7 +43,7 @@ def create_product(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[ProductResponse],
     dependencies=[Depends(require_any_permission("product:read", "order:create"))],
 )

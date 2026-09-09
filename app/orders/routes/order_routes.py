@@ -84,7 +84,7 @@ def _apply_order_filters(
 
 
 @router.get(
-    "/",
+    "",
     response_model=Page[OrderListResponse],
     dependencies=[Depends(require_permission("order:read"))],
 )
@@ -364,7 +364,7 @@ def get_order(
 
 
 @router.post(
-    "/",
+    "",
     response_model=OrderResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("order:create"))],

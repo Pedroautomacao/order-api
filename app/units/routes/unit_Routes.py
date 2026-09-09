@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/",
+    "",
     response_model=UnitResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("product:create"))],
@@ -35,7 +35,7 @@ def create_unit(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[UnitResponse],
     dependencies=[Depends(require_permission("product:read"))],
 )

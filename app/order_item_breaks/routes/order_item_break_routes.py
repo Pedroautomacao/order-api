@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[OrderItemBreakResponse],
     dependencies=[Depends(require_permission("order_item_break:read"))],
 )

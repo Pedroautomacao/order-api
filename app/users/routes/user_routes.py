@@ -46,7 +46,7 @@ def require_can_get_user(
 
 
 @router.post(
-    "/",
+    "",
     response_model=UserResponse,
     dependencies=[Depends(require_permission("user:create"))],
 )
@@ -63,7 +63,7 @@ def create_user(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[UserResponse],
     dependencies=[Depends(require_permission("user:create"))],
 )

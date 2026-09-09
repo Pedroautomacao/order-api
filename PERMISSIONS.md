@@ -95,7 +95,7 @@ def dependency(user: User = Depends(get_current_user)):
 ```python
 # require_any_permission("client:read", "order:create")
 # Permite acesso se o usuário tem QUALQUER UMA das permissões listadas.
-# Usado em GET /clients/ e GET /products/ para que vendedores possam
+# Usado em GET /clients e GET /products para que vendedores possam
 # carregar clientes/produtos no formulário de criação de pedidos.
 ```
 
@@ -123,16 +123,16 @@ garantindo que `RequirePermissionOrRedirect` nunca avalie com permissões vazias
 | Rota frontend           | Permissão necessária  | Endpoint API               |
 |-------------------------|-----------------------|----------------------------|
 | `/admin/dashboard`      | `dashboard:read`      | `GET /dashboard/...`       |
-| `/admin/orders`         | `order:read`          | `GET /orders/`             |
+| `/admin/orders`         | `order:read`          | `GET /orders`             |
 | `/admin/orders/:id`     | `order:read`          | `GET /orders/:id`          |
 | `/admin/seller`         | `order:list`          | `GET /orders/seller`       |
 | `/admin/seller/orders/:id` | `order:list`       | `GET /orders/seller/:id`   |
 | `/admin/producer`       | `order:produce`       | `POST /orders/producer/next` |
 | `/admin/fiscal`         | `order:bill`          | `GET /orders/fiscal`       |
 | `/admin/fiscal/orders/:id` | `order:bill`       | `GET /orders/fiscal/:id`   |
-| `/admin/products`       | `product:read`        | `GET /products/`           |
-| `/admin/clients`        | `client:read`         | `GET /clients/`            |
-| `/admin/users`          | `user:create`         | `GET /users/`              |
+| `/admin/products`       | `product:read`        | `GET /products`           |
+| `/admin/clients`        | `client:read`         | `GET /clients`            |
+| `/admin/users`          | `user:create`         | `GET /users`              |
 | `/admin/audit`          | `audit:read`          | `GET /audit/`              |
 
 ---

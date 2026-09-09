@@ -52,7 +52,7 @@ def get_client_credit(
 
 
 @router.post(
-    "/",
+    "",
     response_model=ClientResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("client:create"))],
@@ -70,7 +70,7 @@ def create_client(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[ClientResponse],
     dependencies=[Depends(require_any_permission("client:read", "order:create"))],
 )

@@ -39,7 +39,7 @@ class TestPermissoesDiretas:
         user = make_user(db, username="noperm", cpf="001.001.001-01", role=role)
         db.flush()
 
-        response = client.get("/clients/", headers=auth_headers_for(user))
+        response = client.get("/clients", headers=auth_headers_for(user))
 
         assert response.status_code == 403
 
@@ -51,7 +51,7 @@ class TestPermissoesDiretas:
         user = make_user(db, username="client_reader", cpf="002.002.002-02", role=role)
         db.flush()
 
-        response = client.get("/clients/", headers=auth_headers_for(user))
+        response = client.get("/clients", headers=auth_headers_for(user))
 
         assert response.status_code == 200
 
@@ -63,13 +63,13 @@ class TestPermissoesDiretas:
         user = make_user(db, username="prod_reader", cpf="003.003.003-03", role=role)
         db.flush()
 
-        response = client.get("/clients/", headers=auth_headers_for(user))
+        response = client.get("/clients", headers=auth_headers_for(user))
 
         assert response.status_code == 403
 
     def test_endpoint_sem_autenticacao_recebe_401(self, client):
         """Sem token, qualquer endpoint protegido retorna 401."""
-        response = client.get("/clients/")
+        response = client.get("/clients")
 
         assert response.status_code == 401
 
@@ -136,7 +136,7 @@ class TestProtecaoEndpoints:
         user = make_user(db, username="order_reader", cpf="006.006.006-06", role=role)
         db.flush()
 
-        response = client.get("/orders/", headers=auth_headers_for(user))
+        response = client.get("/orders", headers=auth_headers_for(user))
 
         assert response.status_code == 200
 
@@ -169,7 +169,7 @@ class TestProtecaoEndpoints:
         user = make_user(db, username="prod_r", cpf="009.009.009-09", role=role)
         db.flush()
 
-        response = client.get("/products/", headers=auth_headers_for(user))
+        response = client.get("/products", headers=auth_headers_for(user))
 
         assert response.status_code == 200
 
@@ -180,6 +180,6 @@ class TestProtecaoEndpoints:
         user = make_user(db, username="user_mgmt", cpf="010.010.010-10", role=role)
         db.flush()
 
-        response = client.get("/users/", headers=auth_headers_for(user))
+        response = client.get("/users", headers=auth_headers_for(user))
 
         assert response.status_code == 200
