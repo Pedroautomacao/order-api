@@ -10,7 +10,7 @@ from app.orders.exception_handler import DuplicateProductInOrderException, Inval
     DuplicateOrderForClientException, NoOrderAvailableException
 from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
-from app.orders.enums import OrderStatus, OrderItemStatus
+from app.orders.enums import OrderStatus, ProductionApproval, OrderItemStatus
 from app.clients.models.client import Client
 from app.orders.models.work_item import WorkItem
 from app.orders.models.work_order import WorkOrder
@@ -195,6 +195,9 @@ class OrderService:
             select(Order)
             .where(
                 Order.status == OrderStatus.AWAITING,
+                # só produz o que foi liberado: pedido aguardando aprovação ou
+                # recusado nunca chega na fila do produtor
+                Order.production_approval == ProductionApproval.APPROVED,
                 Order.scheduled_date == date.today(),
                 Order.is_deleted.is_(False),
             )

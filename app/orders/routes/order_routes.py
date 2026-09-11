@@ -14,6 +14,9 @@ from app.orders.exception_handler import DuplicateProductInOrderException, Inval
     PaymentMethodNotAllowedException
 from app.orders.services.order_payment_service import OrderPaymentService
 from app.orders.services.order_admin_service import OrderAdminService
+from app.orders.services.order_production_approval_service import (
+    OrderProductionApprovalService,
+)
 from pydantic import BaseModel, Field as PydField
 
 
@@ -25,7 +28,7 @@ class RescheduleRequest(BaseModel):
 from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
 from app.products.models.product import Product
-from app.orders.enums import OrderStatus
+from app.orders.enums import OrderStatus, ProductionApproval
 from app.core.schemas.pagination import Page
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.orders.serializers.order_serializer import serialize_order, serialize_order_list_item
@@ -48,14 +51,25 @@ def _apply_order_filters(
     search: str | None,
     status: str | None,
     scheduled_date: date | None,
+    production_approval: str | None = None,
 ):
     """Filtros de listagem de pedido, compartilhados pelas três telas.
 
     Status desconhecido é ignorado em vez de virar erro, mantendo o
-    comportamento que as telas já esperam.
+    comportamento que as telas já esperam — vale também para a liberação
+    de produção.
     """
     if scheduled_date:
         q = q.filter(Order.scheduled_date == scheduled_date)
+
+    if production_approval and production_approval.strip():
+        try:
+            q = q.filter(
+                Order.production_approval
+                == ProductionApproval(production_approval.strip())
+            )
+        except ValueError:
+            pass
 
     if status and status.strip():
         try:
@@ -93,6 +107,11 @@ def list_orders(
     current_user=Depends(get_current_user),
     search: str | None = Query(None, description="ID do pedido, nome ou CNPJ do cliente"),
     status: str | None = Query(None, description="Filtrar por status do pedido"),
+    production_approval: str | None = Query(
+        None,
+        alias="productionApproval",
+        description="Filtrar por liberação de produção (Awaiting, Approved, Recused)",
+    ),
     scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
     page: int = Query(1, ge=1, description="Página, começando em 1"),
     page_size: int = Query(20, ge=1, le=100, description="Itens por página"),
@@ -108,6 +127,7 @@ def list_orders(
         search=search,
         status=status,
         scheduled_date=scheduled_date,
+        production_approval=production_approval,
     )
 
     total = base.with_entities(func.count(Order.id)).order_by(None).scalar() or 0
@@ -528,6 +548,44 @@ def prioritize_order(
     order = get_order_or_404(db, order_id)
     return serialize_order(
         OrderAdminService.prioritize(db=db, order=order, current_user=current_user)
+    )
+
+
+@router.patch(
+    "/{order_id}/approve-production",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:approve_production"))],
+)
+def approve_order_production(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Libera o pedido para entrar na fila de produção."""
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderProductionApprovalService.approve(
+            db=db, order=order, current_user=current_user
+        )
+    )
+
+
+@router.patch(
+    "/{order_id}/recuse-production",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:approve_production"))],
+)
+def recuse_order_production(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Barra o pedido: ele sai da fila de produção."""
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderProductionApprovalService.recuse(
+            db=db, order=order, current_user=current_user
+        )
     )
 
 

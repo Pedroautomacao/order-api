@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.orders.enums import OrderStatus
+from app.orders.enums import OrderStatus, ProductionApproval
 from app.orders.models.order import Order
 from app.dashboard.utils.date_range import resolve_date_range
 
@@ -81,6 +81,18 @@ class DashboardService:
             .scalar()
         )
 
+        # Fila parada por falta de liberação. Não filtra por data: um pedido
+        # esquecido sem aprovação é justamente o que precisa aparecer.
+        awaiting_production_approval = (
+            db.query(func.count(Order.id))
+            .filter(
+                Order.production_approval == ProductionApproval.AWAITING,
+                Order.status == OrderStatus.AWAITING,
+                Order.is_deleted.is_(False),
+            )
+            .scalar()
+        )
+
         # Pedidos por dia — últimos 7 dias (por data de entrega), incluindo dias vazios
         days = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
         rows = (
@@ -112,5 +124,6 @@ class DashboardService:
             "completion_rate_today": round(completion_rate, 2),
             "overdue_orders": overdue_orders,
             "produced_not_billed": produced_not_billed,
+            "awaiting_production_approval": awaiting_production_approval,
             "orders_by_day": orders_by_day,
         }

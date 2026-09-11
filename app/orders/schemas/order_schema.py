@@ -78,6 +78,8 @@ class OrderResponse(BaseModel):
     id: int
     priority: str
     status: str
+    # Liberação para produzir: Awaiting, Approved ou Recused.
+    production_approval: str
     scheduled_date: date
     client_id: int
     client: ClientRefSchema | None = None
@@ -107,6 +109,7 @@ class OrderListResponse(BaseModel):
     id: int
     priority: str
     status: str
+    production_approval: str
     scheduled_date: date
     client_id: int
     client: ClientRefSchema

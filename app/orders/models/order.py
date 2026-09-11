@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.mixins import AuditMixin
-from app.orders.enums import OrderStatus, PaymentMethod
+from app.orders.enums import OrderStatus, PaymentMethod, ProductionApproval
 
 
 class Order(Base, AuditMixin):
@@ -39,6 +39,17 @@ class Order(Base, AuditMixin):
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus),
         default=OrderStatus.AWAITING,
+        nullable=False,
+        index=True,
+    )
+
+    # Liberação para produzir. Nasce em AWAITING e só entra na fila do produtor
+    # depois de aprovada. Indexada porque a fila, a listagem e o dashboard
+    # filtram por ela.
+    production_approval: Mapped[ProductionApproval] = mapped_column(
+        Enum(ProductionApproval),
+        default=ProductionApproval.AWAITING,
+        server_default=ProductionApproval.AWAITING.name,
         nullable=False,
         index=True,
     )

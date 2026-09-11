@@ -132,7 +132,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database.imports import *  # noqa: F401,F403  (registra todos os modelos)
 from app.clients.models.client import Client as _Client
-from app.orders.enums import OrderItemStatus, OrderStatus, PaymentMethod
+from app.orders.enums import (
+    OrderItemStatus,
+    OrderStatus,
+    PaymentMethod,
+    ProductionApproval,
+)
 from app.orders.models.order import Order as _Order
 from app.orders.models.order_item import OrderItem as _OrderItem
 from app.products.models.product import Product as _Product
@@ -226,8 +231,13 @@ def make_order(
     products=None,
     item_status=OrderItemStatus.AWAITING,
     quantity=5,
+    production_approval=ProductionApproval.APPROVED,
 ):
-    """Cria um pedido direto no banco, sem passar pelas validações do service."""
+    """Cria um pedido direto no banco, sem passar pelas validações do service.
+
+    Nasce aprovado de propósito: quase todo teste quer um pedido que já pode
+    ser produzido. Quem testa a trava de liberação passa o valor explícito.
+    """
     db = cat.db
 
     order = _Order(
@@ -235,6 +245,7 @@ def make_order(
         created_by_user_id=cat.user.id,
         priority="A",
         status=status,
+        production_approval=production_approval,
         scheduled_date=scheduled_date or _date.today(),
         payment_method=PaymentMethod.CASH,
         is_paid=False,

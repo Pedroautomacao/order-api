@@ -20,4 +20,6 @@ class DashboardOverviewResponse(BaseModel):
     completion_rate_today: float
     overdue_orders: int
     produced_not_billed: int
+    # Pedidos travados esperando alguém liberar a produção.
+    awaiting_production_approval: int = 0
     orders_by_day: list[OrdersByDayPoint] = []

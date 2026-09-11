@@ -17,6 +17,8 @@ ACTION_LABELS: dict[str, str] = {
     "order:mark_paid": "Pedido marcado como pago",
     "order:set_priority": "Prioridade alterada",
     "order:reschedule": "Data de entrega remarcada",
+    "order:approve_production": "Produção aprovada",
+    "order:recuse_production": "Produção recusada",
     # Itens do pedido
     "order:item_confirm": "Item confirmado",
     "order:item_update_quantity": "Quantidade produzida corrigida",

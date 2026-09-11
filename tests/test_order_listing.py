@@ -16,6 +16,7 @@ def listar(catalog, **kwargs):
     params = {
         "search": None,
         "status": None,
+        "production_approval": None,
         "scheduled_date": None,
         "page": 1,
         "page_size": 20,
