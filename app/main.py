@@ -1,11 +1,17 @@
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import DomainException
+from app.core.integrity import (
+    e_violacao_de_unicidade,
+    mensagem_de_unicidade,
+)
+from app.core.logging import logger
 from app.core.scheduler import start_scheduler
 from app.database.deps import get_db
 from app.database.imports import * # noqa
@@ -59,6 +65,29 @@ async def domain_exception_handler(request: Request, exc: DomainException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    """Violação de unicidade vira 409 com o campo que duplicou.
+
+    Antes disto o IntegrityError subia como 500 e o usuário só via "erro
+    inesperado", sem saber que o CPF/CNPJ já estava cadastrado.
+
+    Violação de chave estrangeira, NOT NULL e afins seguem como 500 de
+    propósito: são defeito de código, não entrada do usuário, e traduzir
+    esconderia o problema de quem precisa corrigi-lo.
+    """
+    if not e_violacao_de_unicidade(exc):
+        raise exc
+
+    mensagem = mensagem_de_unicidade(exc)
+    logger.warning(mensagem, extra={"path": request.url.path})
+
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": mensagem},
     )
 
 
