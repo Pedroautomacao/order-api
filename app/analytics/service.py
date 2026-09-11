@@ -19,6 +19,7 @@ from app.order_item_breaks.models.order_Item_break import OrderItemBreak
 from app.products.models.product import Product
 from app.clients.models.client import Client
 from app.users.models.user import User
+from app.core.time import today_sp
 
 
 PRODUCED_LIKE = (OrderStatus.PRODUCED, OrderStatus.BILLED)
@@ -229,7 +230,7 @@ class AnalyticsService:
             .filter(Order.client_id == client_id, Order.is_deleted.is_(False))
             .scalar()
         )
-        days_since_last = (date.today() - last).days if last else None
+        days_since_last = (today_sp() - last).days if last else None
 
         outstanding = q.with_entities(func.coalesce(func.sum(Order.total_amount), 0)).filter(
             Order.payment_method == PaymentMethod.CREDIT,

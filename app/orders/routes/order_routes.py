@@ -29,6 +29,7 @@ from app.orders.models.order import Order
 from app.orders.models.order_item import OrderItem
 from app.products.models.product import Product
 from app.orders.enums import OrderStatus, ProductionApproval
+from app.core.time import today_sp
 from app.core.schemas.pagination import Page
 from app.orders.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.orders.serializers.order_serializer import serialize_order, serialize_order_list_item
@@ -286,7 +287,12 @@ def list_seller_orders(
     status: str | None = Query(None, description="Filtrar por status do pedido"),
     scheduled_date: date | None = Query(None, description="Filtrar por data de entrega (YYYY-MM-DD)"),
 ):
-    """Lista apenas os pedidos criados pelo vendedor logado."""
+    """Lista apenas os pedidos criados pelo vendedor logado.
+
+    Sem filtro de data, traz de hoje em diante — o que o vendedor ainda pode
+    acompanhar — da data mais próxima para a mais distante. Data passada só
+    aparece quando ele filtra por ela explicitamente.
+    """
     q = (
         db.query(Order)
         .filter(
@@ -295,6 +301,9 @@ def list_seller_orders(
         )
         .options(joinedload(Order.client))
     )
+    if not scheduled_date:
+        q = q.filter(Order.scheduled_date >= today_sp())
+
     q = _apply_order_filters(
         q,
         db=db,
@@ -302,7 +311,8 @@ def list_seller_orders(
         status=status,
         scheduled_date=scheduled_date,
     )
-    q = q.order_by(Order.scheduled_date.desc(), Order.id.desc())
+    # crescente: hoje primeiro, depois as datas seguintes em sequência
+    q = q.order_by(Order.scheduled_date.asc(), Order.id.desc())
     return [serialize_order_list_item(o) for o in q.all()]
 
 

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.clients.exception_handler import ClientNotFoundException
-from app.core.time import utcnow
+from app.core.time import min_scheduled_date, today_sp, utcnow
 from app.database.atomic import atomic
 from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
     DuplicateOrderForClientException, NoOrderAvailableException
@@ -33,17 +33,10 @@ class OrderService:
         if not data.items:
             raise ValueError("Order must have at least one item")
 
-        # 0️⃣ validar scheduled date
-        from app.core.time import utcnow as _utcnow
-        from datetime import timezone, timedelta
-        _now_br = _utcnow().astimezone(timezone(timedelta(hours=-3)))
-        _min_date = (
-            date.today() + timedelta(days=1)
-            if _now_br.hour >= 16
-            else date.today()
-        )
-        if data.scheduled_date < _min_date:
-            raise InvalidScheduledDateException(data.scheduled_date)
+        # 0️⃣ validar scheduled date — hoje vale até as 16h de São Paulo
+        minima = min_scheduled_date()
+        if data.scheduled_date < minima:
+            raise InvalidScheduledDateException(data.scheduled_date, minima)
 
         # 1️⃣ Buscar client
         client = (
@@ -198,7 +191,7 @@ class OrderService:
                 # só produz o que foi liberado: pedido aguardando aprovação ou
                 # recusado nunca chega na fila do produtor
                 Order.production_approval == ProductionApproval.APPROVED,
-                Order.scheduled_date == date.today(),
+                Order.scheduled_date == today_sp(),
                 Order.is_deleted.is_(False),
             )
             .order_by(

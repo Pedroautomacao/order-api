@@ -15,6 +15,7 @@ from app.orders.services.order_service import OrderService
 from app.orders.services.order_update_service import OrderUpdateService
 
 from tests.conftest import confirm_next_item, make_order
+from app.core.time import today_sp
 
 
 def abertos(db, model, order_id):
@@ -167,7 +168,7 @@ class TestEdicaoDoVendedor:
         antes = len(order.items)
         payload = SimpleNamespace(
             client_id=catalog.client.id,
-            scheduled_date=date.today(),
+            scheduled_date=today_sp(),
             payment_method=PaymentMethod.CASH,
             items=[],
         )

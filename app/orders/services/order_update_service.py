@@ -19,6 +19,7 @@ from app.orders.models.order_item import OrderItem
 from app.products.exception_handler import ProductNotFoundException
 from app.products.models.product import Product
 from app.users.models.user import User
+from app.core.time import min_scheduled_date
 
 
 class OrderUpdateService:
@@ -47,7 +48,7 @@ class OrderUpdateService:
         if not data.items:
             raise ValueError("Order must have at least one item")
 
-        if data.scheduled_date < date.today():
+        if data.scheduled_date < min_scheduled_date():
             raise InvalidScheduledDateException(data.scheduled_date)
 
         client = (

@@ -34,7 +34,7 @@ class RefreshTokenService:
             .filter(
                 RefreshToken.token_hash == token_hash,
                 RefreshToken.is_revoked.is_(False),
-                RefreshToken.expires_at > datetime.utcnow(),
+                RefreshToken.expires_at > utcnow(),
             )
             .first()
         )

@@ -7,6 +7,7 @@ from app.audit.services.audit_service import AuditService
 from app.database.atomic import atomic
 from app.orders.enums import OrderStatus
 from app.orders.models.order import Order
+from app.core.time import min_scheduled_date
 
 
 class OrderAdminService:
@@ -44,7 +45,7 @@ class OrderAdminService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Só é possível remarcar a data de pedidos em Aguardando.",
             )
-        if new_date < date.today():
+        if new_date < min_scheduled_date():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="A nova data não pode estar no passado.",

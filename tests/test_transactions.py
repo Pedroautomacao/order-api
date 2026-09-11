@@ -11,12 +11,12 @@ from app.orders.schemas.order_item_schema import OrderItemCreate
 from app.orders.schemas.order_schema import OrderCreate
 from app.orders.services.order_service import OrderService
 from app.products.exception_handler import ProductNotFoundException
+from app.core.time import min_scheduled_date
 
 
 def data_permitida():
-    """A criação recusa data de hoje depois das 16h no horário de Brasília."""
-    agora_br = utcnow().astimezone(timezone(timedelta(hours=-3)))
-    return date.today() + timedelta(days=1) if agora_br.hour >= 16 else date.today()
+    """Primeira data que a criação aceita — hoje só até as 16h de São Paulo."""
+    return min_scheduled_date()
 
 
 def payload(catalog, product_id):

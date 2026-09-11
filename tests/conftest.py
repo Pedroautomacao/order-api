@@ -131,6 +131,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 from app.database.imports import *  # noqa: F401,F403  (registra todos os modelos)
+from app.core.time import today_sp
 from app.clients.models.client import Client as _Client
 from app.orders.enums import (
     OrderItemStatus,
@@ -246,7 +247,7 @@ def make_order(
         priority="A",
         status=status,
         production_approval=production_approval,
-        scheduled_date=scheduled_date or _date.today(),
+        scheduled_date=scheduled_date or today_sp(),
         payment_method=PaymentMethod.CASH,
         is_paid=False,
         total_amount=100,

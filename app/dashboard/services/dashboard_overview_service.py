@@ -6,6 +6,7 @@ from sqlalchemy import func
 from app.orders.enums import OrderStatus, ProductionApproval
 from app.orders.models.order import Order
 from app.dashboard.utils.date_range import resolve_date_range
+from app.core.time import today_sp
 
 
 class DashboardService:
@@ -94,7 +95,7 @@ class DashboardService:
         )
 
         # Pedidos por dia — últimos 7 dias (por data de entrega), incluindo dias vazios
-        days = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
+        days = [today_sp() - timedelta(days=i) for i in range(6, -1, -1)]
         rows = (
             db.query(Order.scheduled_date, func.count(Order.id))
             .filter(

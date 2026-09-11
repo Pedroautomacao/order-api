@@ -19,8 +19,9 @@ from app.orders.models.work_order import WorkOrder
 from app.ranking.services.rankings_service import RankingsService
 
 from tests.conftest import make_order
+from app.core.time import today_sp
 
-HOJE = date.today()
+HOJE = today_sp()
 # meio da tarde: dentro do dia, e fora do [00:00, 00:00] que o código antigo montava
 MEIO_DIA = datetime.combine(HOJE, time(14, 0))
 

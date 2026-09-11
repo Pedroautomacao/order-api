@@ -18,6 +18,7 @@ from app.orders.services.order_finish_service import OrderFinishService
 from app.orders.services.order_service import OrderService
 
 from tests.conftest import confirm_next_item, make_order
+from app.core.time import min_scheduled_date, today_sp
 
 INGLES = re.compile(
     r"\b(created|updated|deleted|canceled|billed|finished|assigned|reset|"
@@ -67,7 +68,7 @@ class TestRotulos:
             entity_id=7,
             description="Pedido #7 faturado",
             user_id=1,
-            created_at=date.today(),
+            created_at=today_sp(),
         )
 
         corpo = AuditLogResponse.model_validate(log).model_dump()
@@ -81,11 +82,7 @@ class TestDescricoesGeradas:
     def test_criar_pedido(self, catalog):
         from app.orders.schemas.order_item_schema import OrderItemCreate
         from app.orders.schemas.order_schema import OrderCreate
-        from app.core.time import utcnow
-        from datetime import timezone
-
-        agora_br = utcnow().astimezone(timezone(timedelta(hours=-3)))
-        agendada = date.today() + timedelta(days=1) if agora_br.hour >= 16 else date.today()
+        agendada = min_scheduled_date()
 
         OrderService.create(
             catalog.db,
@@ -138,7 +135,7 @@ class TestDescricoesGeradas:
         from app.orders.services.order_admin_service import OrderAdminService
 
         order = make_order(catalog, products=[catalog.alfa])
-        nova = date.today() + timedelta(days=3)
+        nova = today_sp() + timedelta(days=3)
 
         OrderAdminService.reschedule(
             catalog.db, order=order, new_date=nova, current_user=catalog.user

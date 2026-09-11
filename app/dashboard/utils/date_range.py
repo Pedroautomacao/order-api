@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta, timezone
+from app.core.time import today_sp
 
 # Fuso da operação. O dia de trabalho é o dia no Brasil, não em UTC.
 BR_TZ = timezone(timedelta(hours=-3))
@@ -8,7 +9,7 @@ def resolve_date_range(
     date_from: date | None,
     date_to: date | None,
 ) -> tuple[date, date]:
-    today = date.today()
+    today = today_sp()
 
     if not date_from and not date_to:
         return today, today

@@ -24,10 +24,21 @@ class DuplicateProductInOrderException(DomainException):
 
 
 class InvalidScheduledDateException(DomainException):
-    def __init__(self, scheduled_date: date):
-        super().__init__(
-            f"Scheduled date {scheduled_date} cannot be in the past"
-        )
+    def __init__(self, scheduled_date: date, minima: date | None = None):
+        # "no passado" deixou de descrever o caso: depois das 16h de São Paulo
+        # hoje também é recusado, e sem dizer a data mínima o usuário não sabe
+        # o que escolher.
+        if minima and minima > scheduled_date:
+            mensagem = (
+                f"Data de entrega {scheduled_date.strftime('%d/%m/%Y')} indisponível. "
+                f"A primeira data possível é {minima.strftime('%d/%m/%Y')} — "
+                f"pedidos para o mesmo dia só até as 16h."
+            )
+        else:
+            mensagem = (
+                f"Data de entrega {scheduled_date.strftime('%d/%m/%Y')} indisponível."
+            )
+        super().__init__(mensagem)
 
 
 class DuplicateOrderForClientException(DomainException):

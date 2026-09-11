@@ -7,8 +7,9 @@ from app.orders.enums import OrderStatus
 from app.orders.routes.order_routes import list_orders
 
 from tests.conftest import make_order
+from app.core.time import today_sp
 
-HOJE = date.today()
+HOJE = today_sp()
 
 
 def listar(catalog, **kwargs):
