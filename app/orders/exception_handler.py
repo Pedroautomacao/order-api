@@ -41,6 +41,23 @@ class InvalidScheduledDateException(DomainException):
         super().__init__(mensagem)
 
 
+class OrderCanceledDuringProductionException(DomainException):
+    """O pedido foi cancelado enquanto o produtor trabalhava nele.
+
+    Sem esta exceção o produtor recebia "pedido não atribuído", porque o
+    cancelamento limpa o assigned_user_id — mensagem que não diz o que houve
+    nem o que fazer.
+    """
+
+    status_code = 409
+
+    def __init__(self, order_id: int):
+        super().__init__(
+            f"O pedido #{order_id} foi cancelado durante a produção. "
+            f"A produção foi encerrada e o pedido ficou parado como estava."
+        )
+
+
 class DuplicateOrderForClientException(DomainException):
     def __init__(self):
         super().__init__(

@@ -8,6 +8,9 @@ from app.database.atomic import atomic
 from app.order_item_breaks.models import OrderItemBreak
 from app.orders.dependencies import get_order_item_or_404
 from app.orders.enums import OrderItemStatus, OrderStatus
+from app.orders.exception_handler import (
+    OrderCanceledDuringProductionException,
+)
 from app.orders.exception_handler import OrderNotAssignedToUserException, InvalidOrderItemStateException, \
     InvalidProducedQuantityException, OrderItemNotFoundException, OrderNotInProductionException
 from app.orders.models.order_item import OrderItem
@@ -50,6 +53,12 @@ class OrderItemService:
             raise OrderItemNotFoundException(order_item_id)
 
         order = item.order
+
+        # O cancelamento limpa o assigned_user_id, então esta guarda vem antes
+        # da de atribuição — senão o produtor lia "pedido não atribuído" em vez
+        # de saber que o pedido foi cancelado.
+        if order.status == OrderStatus.CANCELED:
+            raise OrderCanceledDuringProductionException(order.id)
 
         if order.assigned_user_id != current_user.id:
             raise OrderNotAssignedToUserException()
@@ -133,6 +142,12 @@ class OrderItemService:
     ):
         item = get_order_item_or_404(db, order_item_id)
         order = item.order
+
+        # O cancelamento limpa o assigned_user_id, então esta guarda vem antes
+        # da de atribuição — senão o produtor lia "pedido não atribuído" em vez
+        # de saber que o pedido foi cancelado.
+        if order.status == OrderStatus.CANCELED:
+            raise OrderCanceledDuringProductionException(order.id)
 
         if order.assigned_user_id != current_user.id:
             raise OrderNotAssignedToUserException()

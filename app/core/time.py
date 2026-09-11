@@ -20,6 +20,16 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(momento: datetime) -> datetime:
+    """Garante datetime com fuso, assumindo UTC quando vier sem.
+
+    O SQLite devolve datetime naive mesmo em coluna declarada com timezone, e
+    subtrair naive de aware estoura. No Postgres já vem com fuso, então isto é
+    inofensivo lá.
+    """
+    return momento if momento.tzinfo else momento.replace(tzinfo=timezone.utc)
+
+
 def now_sp() -> datetime:
     """Instante atual no fuso de São Paulo."""
     return datetime.now(SAO_PAULO)

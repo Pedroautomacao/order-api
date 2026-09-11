@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 
 from app.audit.services.audit_service import AuditService
-from app.core.time import utcnow
+from app.core.time import as_utc, utcnow
 from app.database.atomic import atomic
 from app.orders.enums import OrderItemStatus, OrderStatus
 from app.orders.exception_handler import OrderNotFinishedException
@@ -40,8 +40,12 @@ class OrderFinishService:
             # registro aberto — finaliza sem apontamento de tempo em vez de quebrar.
             if work_order is not None:
                 work_order.ended_at = utcnow()
+                # as_utc nos dois lados: o relógio pode vir naive (SQLite dos
+                # testes) ou aware (Postgres), e misturar os dois estoura
                 work_order.time_to_produced_secs = int(
-                    (work_order.ended_at - work_order.started_at).total_seconds()
+                    (
+                        as_utc(work_order.ended_at) - as_utc(work_order.started_at)
+                    ).total_seconds()
                 )
 
             AuditService.log(

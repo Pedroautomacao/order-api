@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from sqlalchemy import or_, func, text
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -9,11 +9,13 @@ from app.clients.models.client import Client
 from app.core.utils.search import normalize_search_string, unaccent_like_sql
 from app.database.deps import get_db
 from app.orders.dependencies import get_order_or_404, with_detail_relations
+from app.orders.exception_handler import OrderCanceledDuringProductionException
 from app.orders.exception_handler import DuplicateProductInOrderException, InvalidScheduledDateException, \
     DuplicateOrderForClientException, NoOrderAvailableException, CreditLimitExceededException, \
     PaymentMethodNotAllowedException
 from app.orders.services.order_payment_service import OrderPaymentService
 from app.orders.services.order_admin_service import OrderAdminService
+from app.orders.services.order_pdf_service import OrderPdfService
 from app.orders.services.order_production_approval_service import (
     OrderProductionApprovalService,
 )
@@ -153,6 +155,35 @@ def list_orders(
 
 
 @router.get(
+    "/export/pdf",
+    dependencies=[Depends(require_permission("order:read"))],
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def export_orders_pdf(
+    scheduled_date: date = Query(
+        ...,
+        alias="scheduledDate",
+        description="Data de entrega dos pedidos a imprimir (YYYY-MM-DD)",
+    ),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Romaneio de produção em PDF, para rodar no papel quando falta internet.
+
+    Declarada antes de /{order_id} de propósito: o FastAPI casa as rotas na
+    ordem de declaração e tentaria ler "export" como id inteiro.
+    """
+    conteudo = OrderPdfService.build(db, scheduled_date=scheduled_date)
+    nome = f"pedidos-{scheduled_date.strftime('%Y-%m-%d')}.pdf"
+    return Response(
+        content=conteudo,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@router.get(
     "/fiscal",
     response_model=list[OrderListResponse],
     dependencies=[Depends(require_permission("order:bill"))],
@@ -269,6 +300,10 @@ def finish_producer_order(
 ):
     """Finaliza pedido em produção do produtor logado."""
     order = get_order_or_404(db, order_id)
+    # antes da checagem de dono: o cancelamento limpa o assigned_user_id e o
+    # produtor veria "pedido não encontrado" sem saber o que houve
+    if order.status == OrderStatus.CANCELED:
+        raise OrderCanceledDuringProductionException(order.id)
     if order.assigned_user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
     order = OrderFinishService.finish_order(db=db, order=order, current_user=current_user)

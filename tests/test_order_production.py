@@ -251,7 +251,12 @@ class TestEdicaoDeQuantidadeDepoisDaProducao:
 
 
 class TestCancelamento:
-    """Cancelar deixava o item em Producing e os apontamentos abertos para sempre."""
+    """Cancelar encerra o trabalho do produtor e congela o pedido como estava.
+
+    O apontamento aberto é fechado, não apagado: sem fechar, o ciclo ficava
+    aberto para sempre; apagando, perdia-se o que o produtor havia registrado
+    até o cancelamento.
+    """
 
     @pytest.fixture()
     def cancelado(self, catalog):
@@ -269,15 +274,34 @@ class TestCancelamento:
         assert abertos(catalog.db, WorkOrder, cancelado.id) == []
         assert abertos(catalog.db, WorkItem, cancelado.id) == []
 
-    def test_baixa_o_item_que_estava_em_producao(self, catalog, cancelado):
+    def test_fecha_o_apontamento_com_o_tempo_trabalhado(self, catalog, cancelado):
+        """Encerrado, não apagado: o tempo até o cancelamento fica registrado."""
+        work_orders = (
+            catalog.db.query(WorkOrder)
+            .filter(WorkOrder.order_id == cancelado.id)
+            .all()
+        )
+
+        assert work_orders
+        assert all(w.ended_at is not None for w in work_orders)
+        assert all(w.time_to_produced_secs is not None for w in work_orders)
+        assert all(not w.is_deleted for w in work_orders)
+
+    def test_congela_o_item_como_estava(self, catalog, cancelado):
+        """O retrato do cancelamento: item em produção continua em produção.
+
+        O pedido cancelado não volta para a fila, então não há ciclo pendurado
+        — e voltar o item para Aguardando apagaria o que já havia acontecido.
+        """
         catalog.db.expire_all()
         producing = [
             i for i in cancelado.items if i.status == OrderItemStatus.PRODUCING
         ]
 
-        assert producing == []
+        assert producing != []
 
-    def test_anula_as_quebras_do_ciclo_cancelado(self, catalog, cancelado):
+    def test_preserva_as_quebras_registradas(self, catalog, cancelado):
+        """A quebra é medição do produtor: some junto com o resto da informação."""
         vivas = (
             catalog.db.query(OrderItemBreak)
             .filter(
@@ -287,7 +311,7 @@ class TestCancelamento:
             .count()
         )
 
-        assert vivas == 0
+        assert vivas > 0
 
 
 class TestPedidoSemItens:

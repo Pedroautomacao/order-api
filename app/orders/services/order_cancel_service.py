@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.audit.services.audit_service import AuditService
+from app.core.time import as_utc, utcnow
 from app.database.atomic import atomic
 from app.order_item_breaks.models import OrderItemBreak
 from app.orders.enums import OrderItemStatus, OrderStatus
@@ -42,49 +43,33 @@ class OrderCancelService:
             order.status = OrderStatus.CANCELED
             order.assigned_user_id = None
 
-            # Mesmo tratamento do reset: cancelar um pedido em produção
-            # deixava o item em Producing e os apontamentos abertos para
-            # sempre, sustentando um ciclo que nunca vai terminar.
-            (
-                db.query(OrderItem)
-                .filter(
-                    OrderItem.order_id == order.id,
-                    OrderItem.status == OrderItemStatus.PRODUCING,
-                )
-                .update(
-                    {OrderItem.status: OrderItemStatus.AWAITING},
-                    synchronize_session=False,
-                )
-            )
-
+            # O apontamento aberto é ENCERRADO, não apagado: o pedido fica
+            # parado com o que já havia sido produzido no instante do
+            # cancelamento, e o tempo trabalhado até ali não se perde. Apagar
+            # resolvia o ciclo que nunca terminava, mas junto levava a
+            # informação que o produtor tinha registrado.
+            agora = utcnow()
             for model in (WorkOrder, WorkItem):
-                (
+                abertos = (
                     db.query(model)
                     .filter(
                         model.order_id == order.id,
                         model.ended_at.is_(None),
                         model.is_deleted.is_(False),
                     )
-                    .update(
-                        {
-                            model.time_to_produced_secs: None,
-                            model.is_deleted: True,
-                        },
-                        synchronize_session=False,
+                    .all()
+                )
+                for apontamento in abertos:
+                    apontamento.ended_at = agora
+                    apontamento.time_to_produced_secs = int(
+                        (
+                            as_utc(agora) - as_utc(apontamento.started_at)
+                        ).total_seconds()
                     )
-                )
 
-            (
-                db.query(OrderItemBreak)
-                .filter(
-                    OrderItemBreak.order_id == order.id,
-                    OrderItemBreak.is_deleted.is_(False),
-                )
-                .update(
-                    {OrderItemBreak.is_deleted: True},
-                    synchronize_session=False,
-                )
-            )
+            # O status dos itens e as quebras permanecem como estavam: é o
+            # retrato do cancelamento, e o pedido cancelado não volta para a
+            # fila, então item em Producing não sustenta ciclo nenhum.
 
             AuditService.log(
                 db=db,

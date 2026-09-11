@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # (ex.: /api). Vazio = sem prefixo, que é o caso rodando direto.
     root_path: str = ""
 
+    # Marca impressa no PDF. O front tem as suas REACT_APP_BRAND_*, que não
+    # chegam aqui — o PDF é gerado no backend, então ele precisa das próprias.
+    brand_name: str = "Uai System"
+    brand_tagline: str = "Gestão de Pedidos e Produção"
+    # Caminho do logo. Vazio = usa app/assets/logo.png que vem no repositório.
+    brand_logo_path: str = ""
+
     class Config:
         env_file = ".env"
 
