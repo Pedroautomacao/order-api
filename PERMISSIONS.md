@@ -34,6 +34,7 @@ Essa lógica está implementada em:
 | `order:bill`            | Faturar pedidos (tela fiscal)                  |
 | `order:cancel`          | Cancelar pedidos (admin)                       |
 | `order:reset_production`| Resetar produção de pedido                     |
+| `order:approve_production`| Aprovar ou recusar a produção do pedido      |
 | `client:read`           | Listar e ver clientes                          |
 | `client:create`         | Criar clientes                                 |
 | `client:update`         | Editar clientes                                |
@@ -55,11 +56,19 @@ Essa lógica está implementada em:
 ## Perfis Padrão (Roles no BD)
 
 ### Admin
-- Acesso via grupo de menu `orders` (order:read, order:create, order:cancel, order:bill)
+- Acesso via grupo de menu `orders` (order:read, order:create, order:cancel,
+  order:bill, order:approve_production)
 - Acesso via grupo de menu `clients` (client:read, client:create, client:update, client:delete)
 - Acesso via grupo de menu `products` (product:read, product:create, product:update, product:delete, unit:*)
 - Acesso via grupo de menu `producer` (order:produce)
-- Permissões adicionais diretas: `dashboard:read`, `user:create`, `audit:read`
+- Acesso via grupo de menu `dashboard` (dashboard:read)
+- Acesso via grupo de menu `users` (user:create)
+- Acesso via grupo de menu `audit` (audit:read)
+
+> Toda permissão de tela precisa estar em um grupo de menu. Conceder direto ao
+> perfil não funciona para quem já tem grupos — ver a regra no topo deste
+> documento. Foi o que manteve a tela de auditoria inacessível até a migration
+> `e9f0a1b2c3d4`.
 
 ### Vendedor (`Vendedor`)
 - Grupo de menu: `seller`

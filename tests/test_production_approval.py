@@ -1,4 +1,5 @@
 """Liberação de produção: só pedido aprovado entra na fila do produtor."""
+from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
@@ -9,6 +10,7 @@ from app.orders.services.order_production_approval_service import (
     OrderProductionApprovalService,
 )
 from app.orders.services.order_service import OrderService
+from app.users.services.permission_service import PermissionService
 
 from tests.conftest import make_order
 
@@ -128,3 +130,63 @@ class TestFiltroDaListagem:
         page = listar(catalog, production_approval="NaoExiste")
 
         assert page.total == 2
+
+
+def _perm(code):
+    return SimpleNamespace(code=code)
+
+
+def _user(*, menu_groups=(), direct=()):
+    role = SimpleNamespace(
+        menu_groups=list(menu_groups),
+        permissions=[_perm(c) for c in direct],
+    )
+    return SimpleNamespace(roles=[role])
+
+
+def _grupo(code, permissoes):
+    return SimpleNamespace(code=code, permissions=[_perm(c) for c in permissoes])
+
+
+class TestDeOndeVemAPermissao:
+    """Trava a semântica que derrubou a primeira versão desta feature.
+
+    get_user_permissions é excludente: se o perfil tem grupo de menu, as
+    permissões diretas do perfil são ignoradas por completo. Conceder
+    order:approve_production direto ao role admin não surtia efeito nenhum,
+    porque admin tem grupos.
+    """
+
+    def test_grupo_de_menu_anula_as_permissoes_diretas(self):
+        user = _user(
+            menu_groups=[_grupo("orders", ["order:read"])],
+            direct=["order:approve_production"],
+        )
+
+        assert PermissionService.get_user_permissions(user) == {"order:read"}
+
+    def test_grupo_orders_concede_a_aprovacao(self):
+        user = _user(
+            menu_groups=[
+                _grupo(
+                    "orders",
+                    ["order:read", "order:cancel", "order:approve_production"],
+                )
+            ]
+        )
+
+        assert "order:approve_production" in PermissionService.get_user_permissions(user)
+
+    def test_quem_nao_tem_o_grupo_orders_nao_aprova(self):
+        user = _user(menu_groups=[_grupo("fiscal", ["order:bill"])])
+
+        assert "order:approve_production" not in PermissionService.get_user_permissions(
+            user
+        )
+
+    def test_perfil_sem_grupo_ainda_usa_as_diretas(self):
+        user = _user(direct=["order:approve_production"])
+
+        assert PermissionService.get_user_permissions(user) == {
+            "order:approve_production"
+        }
