@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from sqlalchemy.orm import Session
 
 from app.database.atomic import atomic
@@ -34,14 +36,20 @@ class ProductService:
         product = Product(
             name=data.name,
             description=data.description,
-            sku=data.sku,
+            # O sku é o id do produto, que só existe depois do INSERT — e a
+            # coluna é NOT NULL. Entra um placeholder único e ele é sobrescrito
+            # abaixo, na mesma transação, então o temporário nunca fica visível.
+            sku=f"tmp-{uuid4().hex}",
             is_active=data.is_active,
             unit_price=data.unit_price,
             unit_of_measure_id=unit.id,
         )
         with atomic(db):
             db.add(product)
-            db.flush()  # precisa do id gerado para o log
+            db.flush()  # precisa do id gerado para o log e para o sku
+
+            product.sku = str(product.id)
+            db.flush()
 
             AuditService.log(
                 db=db,

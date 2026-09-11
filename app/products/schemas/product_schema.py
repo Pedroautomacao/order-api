@@ -12,7 +12,10 @@ class ProductBase(BaseModel):
 
     name: str
     description: str | None = None
-    sku: str
+
+    # sku não entra no contrato de propósito: é gerado pelo ProductService a
+    # partir do id. Quem cadastra não escolhe, e a tela de edição o mostra
+    # apenas para leitura.
 
     unit_price: Decimal = Field(
         default=0,

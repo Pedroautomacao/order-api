@@ -239,7 +239,6 @@ class TestDescricoesDeCadastro:
             data=ProductCreate(
                 name="Gama",
                 description="d",
-                sku="G",
                 is_active=True,
                 unit_price=5,
                 unit_of_measure_id=unidade.id,
