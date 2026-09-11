@@ -41,17 +41,25 @@ class CreditService:
 
     @staticmethod
     def compute_order_amount(db: Session, items) -> Decimal:
-        """Σ(preço unitário × quantidade) dos itens do pedido."""
+        """Σ(preço unitário × quantidade) dos itens do pedido.
+
+        Usa o preço informado no item quando houver — é como o desconto
+        exclusivo entra na conta — e cai no preço de tabela do produto quando
+        não houver.
+        """
         total = Decimal("0")
         for item in items:
-            product = (
-                db.query(Product)
-                .filter(Product.id == item.product_id)
-                .first()
-            )
-            if product is None:
-                continue
-            total += Decimal(str(product.unit_price or 0)) * Decimal(str(item.quantity))
+            preco = getattr(item, "unit_price", None)
+            if preco is None:
+                product = (
+                    db.query(Product)
+                    .filter(Product.id == item.product_id)
+                    .first()
+                )
+                if product is None:
+                    continue
+                preco = product.unit_price or 0
+            total += Decimal(str(preco)) * Decimal(str(item.quantity))
         return total
 
     @staticmethod

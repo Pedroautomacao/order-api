@@ -30,8 +30,11 @@ class OrderUpdateService:
         order: Order,
         data,
         current_user: User,
+        enforce_ownership: bool = True,
     ) -> Order:
-        if order.created_by_user_id != current_user.id:
+        # O vendedor só mexe no que é dele. Quem edita pela tela de pedidos
+        # chega com enforce_ownership=False — a rota já exigiu order:update.
+        if enforce_ownership and order.created_by_user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Você não tem permissão para editar este pedido.",
@@ -134,6 +137,13 @@ class OrderUpdateService:
                     order_id=order.id,
                     product_id=product.id,
                     quantity=item_data.quantity,
+                    # preço informado vence o de tabela: é por aqui que entra
+                    # o desconto exclusivo do pedido
+                    unit_price=(
+                        item_data.unit_price
+                        if getattr(item_data, "unit_price", None) is not None
+                        else (product.unit_price or 0)
+                    ),
                 ))
 
             order.client_id = client.id

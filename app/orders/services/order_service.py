@@ -138,6 +138,13 @@ class OrderService:
                     order_id=order.id,
                     product_id=product.id,
                     quantity=item.quantity,
+                    # congela o preço: o do item quando informado, senão o de
+                    # tabela do produto neste instante
+                    unit_price=(
+                        item.unit_price
+                        if getattr(item, "unit_price", None) is not None
+                        else (product.unit_price or 0)
+                    ),
                 )
 
                 db.add(order_item)

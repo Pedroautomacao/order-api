@@ -422,6 +422,35 @@ def create_order(
         )
 
 
+@router.put(
+    "/{order_id}",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("order:update"))],
+)
+def update_order(
+    order_id: int,
+    data: OrderUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Edita o pedido: itens, quantidades e o preço cobrado em cada um.
+
+    Diferente de /seller/{id}, não exige ser o criador — quem tem
+    order:update edita qualquer pedido. Continua valendo só para pedido em
+    Aguardando, e o total é recalculado a partir dos preços enviados.
+    """
+    order = get_order_or_404(db, order_id)
+    return serialize_order(
+        OrderUpdateService.update(
+            db=db,
+            order=order,
+            data=data,
+            current_user=current_user,
+            enforce_ownership=False,
+        )
+    )
+
+
 @router.patch(
     "/{order_id}/pay",
     response_model=OrderResponse,

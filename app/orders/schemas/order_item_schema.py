@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.products.schemas.product_schema import ProductResponse
@@ -14,6 +16,14 @@ class OrderItemCreate(BaseModel):
     )
 
     quantity: float = Field(gt=0)
+
+    # Preço exclusivo deste pedido. Vazio = usa o preço de tabela do produto.
+    unit_price: Decimal | None = Field(
+        default=None,
+        alias="unitPrice",
+        ge=0,
+        description="Preço unitário cobrado neste pedido",
+    )
 
 
 class OrderItemConfirm(BaseModel):
@@ -32,6 +42,10 @@ class OrderItemResponse(BaseModel):
     produced_quantity: float | None
     status: str
     product: ProductResponse
+
+    # Congelado na criação do pedido; não acompanha mudança de preço do produto
+    unit_price: Decimal
+    total_price: Decimal
 
     model_config = ConfigDict(from_attributes=True)
 

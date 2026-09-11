@@ -261,6 +261,7 @@ def make_order(
                 order_id=order.id,
                 product_id=product.id,
                 quantity=quantity,
+                unit_price=product.unit_price or 0,
                 produced_quantity=(
                     quantity if item_status == OrderItemStatus.PRODUCED else None
                 ),
